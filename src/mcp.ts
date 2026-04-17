@@ -1,4 +1,4 @@
-import { experimental_createMCPClient } from "ai";
+import { experimental_createMCPClient } from "@ai-sdk/mcp";
 import { z } from "zod";
 
 const registerAgentParamsSchema = z.object({
