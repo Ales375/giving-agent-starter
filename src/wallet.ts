@@ -1,5 +1,6 @@
 import { CdpClient, parseUnits } from "@coinbase/cdp-sdk";
 import { formatUnits, isAddress, type Address } from "viem";
+import { toAccount, type LocalAccount } from "viem/accounts";
 
 const BASE_MAINNET_NETWORK = "base";
 const USDC_DECIMALS = 6;
@@ -49,6 +50,11 @@ function toUsdcAtomicUnits(amount: number): bigint {
 export async function getWalletAddress(): Promise<string> {
   const account = await getAccount();
   return account.address;
+}
+
+export async function getX402Signer(): Promise<LocalAccount> {
+  const account = await getAccount();
+  return toAccount(account);
 }
 
 export async function sendUSDC(to: string, amount: number): Promise<string> {
