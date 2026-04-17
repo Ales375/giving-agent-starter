@@ -54,12 +54,29 @@ On each scheduled run:
 | Language | TypeScript (Node 20+) |
 | MCP client | Vercel AI SDK `experimental_createMCPClient` (streamable HTTP) |
 | LLM | Vercel AI SDK — default OpenAI `gpt-4o-mini` |
-| Wallet | Coinbase CDP Agentic Wallet (default) or viem EOA (advanced) |
-| Chain payment | viem for direct USDC transfers on Base |
+| Wallet | Coinbase CDP Server Wallet v2 (`@coinbase/cdp-sdk`), named EVM account |
+| Chain payment | Account-level `account.transfer({ token: "usdc", network: "base" })` via CDP SDK; `parseUnits` from viem for amount conversion |
 | x402 client | `x402-fetch` (pay-per-request wrapped fetch) |
 | Persona format | YAML |
 | State | JSON file, local, gitignored |
 | Deploy | Railway (primary) or GitHub Actions cron (alternative) |
+
+### CDP credentials model
+
+The CDP SDK v2 authenticates with three pieces:
+
+- `CDP_API_KEY_ID` — API key identifier from portal.cdp.coinbase.com
+- `CDP_API_KEY_SECRET` — API key secret from portal.cdp.coinbase.com
+- `CDP_WALLET_SECRET` — Wallet secret used to sign operations
+
+Accounts are identified by freeform name via `cdp.evm.getOrCreateAccount({ name })`.
+The starter uses `CDP_ACCOUNT_NAME` as the env var holding that name
+(not "wallet ID" — CDP v2 has no wallet ID concept). The same name is
+resolved on every run so the same account is used across runs.
+
+Network for Base mainnet is `"base"`. For Base Sepolia it is `"base-sepolia"`.
+USDC transfers use the SDK's built-in `account.transfer({ token: "usdc" })`
+flow. No raw viem transaction construction is needed for USDC transfers.
 
 ---
 
