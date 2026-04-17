@@ -1,13 +1,13 @@
 import { existsSync, readFileSync, renameSync, writeFileSync } from "node:fs";
-import { resolve } from "node:path";
+import { basename, dirname, resolve } from "node:path";
 
 import type { AgentState } from "./types.js";
 
 const STATE_FILENAME = ".agent-state.json";
-
-function getStatePath(): string {
-  return resolve(process.cwd(), STATE_FILENAME);
-}
+const STATE_FILE_PATH =
+  process.env.STATE_FILE_PATH && process.env.STATE_FILE_PATH.trim() !== ""
+    ? process.env.STATE_FILE_PATH
+    : resolve(process.cwd(), STATE_FILENAME);
 
 function pad(value: number): string {
   return String(value).padStart(2, "0");
@@ -22,23 +22,23 @@ function getTodayKey(now: Date = new Date()): string {
 }
 
 export function readState(): AgentState | null {
-  const statePath = getStatePath();
-
-  if (!existsSync(statePath)) {
+  if (!existsSync(STATE_FILE_PATH)) {
     return null;
   }
 
-  const raw = readFileSync(statePath, "utf8");
+  const raw = readFileSync(STATE_FILE_PATH, "utf8");
   return JSON.parse(raw) as AgentState;
 }
 
 export function writeState(state: AgentState): void {
-  const statePath = getStatePath();
-  const tempPath = `${statePath}.tmp`;
+  const tempPath = resolve(
+    dirname(STATE_FILE_PATH),
+    `${basename(STATE_FILE_PATH)}.tmp`,
+  );
   const contents = JSON.stringify(state, null, 2);
 
   writeFileSync(tempPath, contents, "utf8");
-  renameSync(tempPath, statePath);
+  renameSync(tempPath, STATE_FILE_PATH);
 }
 
 export function resetBudgetIfNewMonth(state: AgentState): AgentState {
