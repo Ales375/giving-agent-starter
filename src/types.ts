@@ -97,6 +97,23 @@ export type AgentState = {
   today_key: string;
 };
 
+export type EvidenceDocument = {
+  document_id: string;
+  document_type: string;
+  mime_type?: string;
+  file_size_bytes?: number;
+  submitted_at: string;
+  status?: "available" | "removed";
+  deleted_at?: string;
+};
+
+export type EvidenceData = {
+  documents: EvidenceDocument[];
+  fetched_via: "mcp_free" | "x402_paid";
+  settled_amount_usdc?: number;
+  tx_hash?: string;
+};
+
 export type Campaign = {
   campaign_id: string;
   title: string;
