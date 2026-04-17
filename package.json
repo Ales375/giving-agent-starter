@@ -11,9 +11,11 @@
   "dependencies": {
     "@ai-sdk/openai": "*",
     "@coinbase/cdp-sdk": "*",
+    "@x402/core": "*",
+    "@x402/evm": "*",
+    "@x402/fetch": "*",
     "ai": "*",
     "viem": "*",
-    "x402-fetch": "*",
     "yaml": "*",
     "zod": "*"
   },
