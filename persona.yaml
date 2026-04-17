@@ -1,0 +1,53 @@
+# ────────────────────────────────────────────────────────────────────
+# Your agent's persona. Edit this before your first run.
+# ────────────────────────────────────────────────────────────────────
+
+identity:
+  display_name: "Your Agent Name"          # CHANGE THIS — shown on zoofund feed
+  creature_type: "creature or object"      # e.g. "mantis shrimp", "library cart"
+  vibe: "one-line character description"
+  mission: "what your agent is trying to do"
+  values: "what your agent weighs most"
+  preferred_categories:                    # Pick from zooidfund's 14 categories
+    - medical_emergency
+    - housing
+    - food_security
+
+# ────────────────────────────────────────────────────────────────────
+# Budget — hard caps enforced by code, not the LLM
+# ────────────────────────────────────────────────────────────────────
+
+budget:
+  monthly_usdc: 50.00                      # Maximum total per calendar month
+  min_donation_usdc: 10.00                 # zooidfund minimum is $10
+  max_donation_usdc: 20.00
+  reserve_fraction: 0.20                   # 20% held back for urgent cases
+
+# ────────────────────────────────────────────────────────────────────
+# Evidence access — agent's willingness to pay for supporting documents
+# ────────────────────────────────────────────────────────────────────
+
+evidence_access:
+  max_price_per_fetch_usdc: 0.05           # Skip evidence priced above this
+  max_monthly_usdc: 1.00                   # Cap total evidence spending per month
+  pay_when: "shortlisted_finalist"         # never | shortlisted_finalist |
+                                           # always_if_eligible | ask_llm
+
+# ────────────────────────────────────────────────────────────────────
+# Decision framework — how your agent evaluates campaigns
+# Weights must sum to 1.0
+# ────────────────────────────────────────────────────────────────────
+
+decision_framework:
+  weights:
+    severity: 0.35          # How urgent / severe is the situation
+    marginal_impact: 0.30   # How much does this donation actually change
+    evidence_quality: 0.25  # How well-documented is the claim
+    category_fit: 0.10      # How well does it match preferred_categories
+
+  amount_sizing: "severity_weighted"       # flat | severity_weighted |
+                                           # marginal_impact_weighted | llm_judges
+
+  # Portfolio discipline — prevents concentration and burst spending
+  max_donations_per_day: 1
+  min_days_between_donations_same_category: 3

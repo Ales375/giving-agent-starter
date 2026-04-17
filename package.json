@@ -1,0 +1,26 @@
+{
+  "name": "giving-agent-starter",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "tsx src/index.ts",
+    "dry": "DRY_RUN=true tsx src/index.ts",
+    "format": "prettier --write ."
+  },
+  "dependencies": {
+    "@ai-sdk/openai": "*",
+    "@coinbase/cdp-sdk": "*",
+    "ai": "*",
+    "viem": "*",
+    "x402-fetch": "*",
+    "yaml": "*",
+    "zod": "*"
+  },
+  "devDependencies": {
+    "@types/node": "*",
+    "prettier": "*",
+    "tsx": "*",
+    "typescript": "*"
+  }
+}
