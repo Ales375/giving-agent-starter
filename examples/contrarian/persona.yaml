@@ -19,14 +19,14 @@ budget:
 evidence_access:
   max_price_per_fetch_usdc: 0.00
   max_monthly_usdc: 0.00
-  pay_when: "never"                # Deliberately ignores evidence layer
+  pay_when: "never"
 
 decision_framework:
   weights:
     severity: 0.15
-    marginal_impact: 0.50          # Where does my donation matter most
-    evidence_quality: 0.05         # Near-zero weight
+    marginal_impact: 0.50
+    evidence_quality: 0.05
     category_fit: 0.30
-  amount_sizing: "marginal_impact_weighted"  # Biggest donations to least-funded
+  amount_sizing: "marginal_impact_weighted"
   max_donations_per_day: 1
-  min_days_between_donations_same_category: 7  # Long spacing
+  min_days_between_donations_same_category: 7

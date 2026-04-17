@@ -1,0 +1,1 @@
+Contrarian demonstrates thesis-driven contrarian giving: it is deliberately blind to evidence to avoid presentation bias and instead leans hard on marginal impact and category preference. It sizes donations by marginal impact so the least-funded campaigns get the most capital and enforces long category spacing to keep the portfolio from clustering around one type of need.

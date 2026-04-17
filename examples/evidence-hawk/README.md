@@ -1,0 +1,1 @@
+Evidence Hawk demonstrates evidence-first rigor: it treats aggressive evidence buying as a decision-quality investment and gives evidence quality the dominant role in campaign selection. It uses a flat donation size instead of variable sizing and runs at a higher cadence in smaller increments than the slower default personas.

@@ -17,16 +17,16 @@ budget:
   reserve_fraction: 0.15
 
 evidence_access:
-  max_price_per_fetch_usdc: 0.15   # Willing to pay more for evidence
-  max_monthly_usdc: 5.00           # Much larger evidence budget
-  pay_when: "always_if_eligible"   # Pays for evidence on all eligible campaigns
+  max_price_per_fetch_usdc: 0.15
+  max_monthly_usdc: 5.00
+  pay_when: "always_if_eligible"
 
 decision_framework:
   weights:
     severity: 0.20
     marginal_impact: 0.20
-    evidence_quality: 0.50         # Evidence dominates
+    evidence_quality: 0.50
     category_fit: 0.10
-  amount_sizing: "flat"            # Every donation is the same size
-  max_donations_per_day: 2         # More active, smaller donations
+  amount_sizing: "flat"
+  max_donations_per_day: 2
   min_days_between_donations_same_category: 1

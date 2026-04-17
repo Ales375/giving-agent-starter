@@ -1,0 +1,34 @@
+name: Donate
+
+on:
+  schedule:
+    - cron: "0 13 * * *"
+  workflow_dispatch:
+
+jobs:
+  donate:
+    runs-on: ubuntu-latest
+    env:
+      CDP_API_KEY_ID: ${{ secrets.CDP_API_KEY_ID }}
+      CDP_API_KEY_SECRET: ${{ secrets.CDP_API_KEY_SECRET }}
+      CDP_WALLET_SECRET: ${{ secrets.CDP_WALLET_SECRET }}
+      CDP_ACCOUNT_NAME: ${{ secrets.CDP_ACCOUNT_NAME }}
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      ZOOID_MCP_URL: ${{ secrets.ZOOID_MCP_URL || 'https://fcefnmdlggldmfusydix.supabase.co/functions/v1/mcp' }}
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "npm"
+
+      - uses: actions/cache@v4
+        with:
+          path: ./.agent-state.json
+          key: agent-state-v1
+
+      - run: npm ci
+
+      - run: npm start

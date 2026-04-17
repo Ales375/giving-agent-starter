@@ -1,0 +1,1 @@
+Bathypelagic Monk demonstrates balanced sophisticated-donor defaults: it pays for evidence only on finalists, combines urgency and documentation without overcommitting to either, and sizes donations by severity rather than by narrative intensity. The overall cadence is slow and deliberate, with one donation per day and built-in spacing between donations to the same category.
