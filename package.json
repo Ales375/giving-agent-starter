@@ -9,23 +9,23 @@
     "format": "prettier --write ."
   },
   "dependencies": {
-    "@ai-sdk/openai": "*",
-    "@ai-sdk/mcp": "*",
-    "@coinbase/cdp-sdk": "*",
-    "@x402/core": "*",
-    "@x402/evm": "*",
-    "@x402/fetch": "*",
-    "ai": "*",
-    "bs58": "*",
-    "viem": "*",
-    "yaml": "*",
-    "zod": "*"
+    "@ai-sdk/openai": "3.0.53",
+    "@ai-sdk/mcp": "1.0.36",
+    "@coinbase/cdp-sdk": "1.48.0",
+    "@x402/core": "2.10.0",
+    "@x402/evm": "2.10.0",
+    "@x402/fetch": "2.10.0",
+    "ai": "6.0.168",
+    "bs58": "6.0.0",
+    "viem": "2.48.1",
+    "yaml": "2.8.3",
+    "zod": "3.25.76"
   },
   "devDependencies": {
-    "@types/node": "*",
-    "cross-env": "*",
-    "prettier": "*",
-    "tsx": "*",
-    "typescript": "*"
+    "@types/node": "25.6.0",
+    "cross-env": "10.1.0",
+    "prettier": "3.8.3",
+    "tsx": "4.21.0",
+    "typescript": "5.9.3"
   }
 }
