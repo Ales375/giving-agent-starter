@@ -39,17 +39,7 @@ In normal use, a daily agent on Railway should land roughly in the `$5-10/month`
 
 GitHub Actions is a workable alternative if you want the agent to live entirely inside a GitHub repo. The workflow file for this project lives at `.github/workflows/donate.yml`. The main extra work compared with Railway is state persistence, because GitHub runners are also ephemeral.
 
-The simplest pattern is to cache the state file with a deterministic key so the same file is restored on each scheduled run. The cache step should look like this:
-
-```yaml
-- name: Restore state
-  uses: actions/cache@v4
-  with:
-    path: .agent-state.json
-    key: giving-agent-state-v1
-```
-
-Because the key is deterministic, the same cache entry is reused across runs instead of creating a new cache every time. That gives the agent a stable `.agent-state.json` file with its zooidfund registration and budget history intact.
+In this starter, the GitHub Actions workflow does not provide durable mutable persistence for `.agent-state.json`. That means GitHub Actions is best treated as a secondary path for manual or scheduled live runs, not the recommended production deployment path for agents that need persistent budget, registration, and category-spacing history. For production use, Railway with a persistent volume is the recommended path.
 
 Set repository secrets for:
 

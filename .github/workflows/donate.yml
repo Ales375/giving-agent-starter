@@ -24,11 +24,9 @@ jobs:
           node-version: 20
           cache: "npm"
 
-      - uses: actions/cache@v4
-        with:
-          path: ./.agent-state.json
-          key: agent-state-v1
-
+      # GitHub Actions is a secondary path for scheduled/manual live runs and does not
+      # provide durable mutable state for .agent-state.json; Railway with a persistent
+      # volume is the production path.
       - run: npm ci
 
       - run: npm start
