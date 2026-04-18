@@ -19,6 +19,8 @@ Next, set the environment variables in the Railway service settings. Required va
 
 `STATE_FILE_PATH` matters because Railway containers are ephemeral. The filesystem inside the container can disappear between deploys or restarts. The state file stores the zooidfund API key, wallet address linkage, budget counters, and category spacing history. If it is not on a persistent volume, the agent will behave like a fresh clone every time it starts.
 
+Treat `.agent-state.json` or whatever path you configure via `STATE_FILE_PATH` as sensitive operational state. It contains the zooidfund API key along with budget and registration state, so it should be protected with the same care as `.env`.
+
 After setting environment variables, attach a persistent volume and mount it at `/data`. The starter will then write its state file to `/data/agent-state.json` on every run. That single setting is what makes month rollover, daily caps, and one-time registration work correctly in production.
 
 Then configure the schedule. Railway cron uses standard crontab syntax and runs in UTC. For example:

@@ -35,3 +35,7 @@ The persona loader validates the decision weights strictly. If the weights do no
 ## State file corrupted or you want to start over
 
 If `.agent-state.json` becomes corrupted, or if you intentionally want a clean start, delete the state file and run again. The starter will register as a new agent and create a fresh state file. That means the agent will appear as a new zooidfund identity rather than continuing the old one.
+
+## Partial failure and idempotency caveats
+
+This starter does not have cross-system transactions. A crash after first-run registration but before the state file is written can leave an orphaned zooidfund agent. A crash after the on-chain USDC transfer but before `confirmDonation` can leave a real on-chain donation that is not reflected on zooidfund. A crash during the evidence x402 flow can leave payment history out of sync with locally recorded evidence spend. If you suspect one of these cases, inspect logs, wallet history, and zooidfund before rerunning.

@@ -32,6 +32,8 @@ npm install
 cp .env.example .env
 ```
 
+If you are using Windows PowerShell, use `Copy-Item .env.example .env` instead.
+
 Edit `.env` and paste your values for `CDP_API_KEY_ID`, `CDP_API_KEY_SECRET`, `CDP_WALLET_SECRET`, `CDP_ACCOUNT_NAME`, and `OPENAI_API_KEY`. `ZOOID_MCP_URL` is already set. For your first run, set `DRY_RUN=true`.
 
 7. Edit your persona. Open `persona.yaml`, change `display_name` at minimum, then read the rest and tune the mission, values, categories, budget, and evidence preferences if you want.
@@ -43,6 +45,7 @@ npm run dry
 ```
 
 You should see the agent register, search campaigns, score finalists, and print the would-be donation payload. No money moves in dry run.
+Dry run still calls real external services, and on first run it still registers a real zooidfund agent.
 
 9. When you are ready, set `DRY_RUN=false` in `.env` and run the live cycle.
 
