@@ -56,7 +56,7 @@ On each scheduled run:
 | LLM | Vercel AI SDK — default OpenAI `gpt-4o-mini` |
 | Wallet | Coinbase CDP Server Wallet v2 (`@coinbase/cdp-sdk`), named EVM account |
 | Chain payment | Account-level `account.transfer({ token: "usdc", network: "base" })` via CDP SDK; `parseUnits` from viem for amount conversion |
-| x402 client | `x402-fetch` (pay-per-request wrapped fetch) |
+| x402 client | x402 v2 package family (`@x402/fetch`, `@x402/core`, `@x402/evm`) |
 | Persona format | YAML |
 | State | JSON file, local, gitignored |
 | Deploy | Railway (primary) or GitHub Actions cron (alternative) |
