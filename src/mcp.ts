@@ -32,6 +32,13 @@ const searchCampaignsParamsSchema = z.object({
   offset: z.number().optional(),
 });
 
+const evidenceSummarySchema = z.object({
+  document_types: z.record(z.string(), z.number()),
+  total_documents: z.number(),
+  total_size_bytes: z.number(),
+  most_recent_upload: z.string().nullable(),
+});
+
 const campaignSchema = z.object({
   campaign_id: z.string(),
   title: z.string(),
@@ -42,9 +49,32 @@ const campaignSchema = z.object({
   goal_amount: z.number(),
   funded_amount: z.number(),
   creator_wallet_address: z.string(),
-  evidence_summary: z.unknown().nullable().optional(),
+  evidence_summary: evidenceSummarySchema.nullable().optional(),
   verified_by: z.string().nullable().optional(),
   status: z.string(),
+});
+
+const fundingProgressSchema = z.object({
+  goal_amount: z.number(),
+  funded_amount: z.number(),
+  percent_funded: z.number(),
+});
+
+const getCampaignResponseSchema = z.object({
+  campaign: z.object({
+    campaign_id: z.string(),
+    title: z.string(),
+    description: z.string(),
+    category: z.string(),
+    location: z.string().nullable().optional(),
+    location_country: z.string().nullable().optional(),
+    goal_amount: z.number(),
+    funded_amount: z.number(),
+    creator_wallet_address: z.string(),
+    status: z.string(),
+  }),
+  funding_progress: fundingProgressSchema,
+  evidence_summary: evidenceSummarySchema,
 });
 
 const searchCampaignsResponseSchema = z.object({
@@ -117,7 +147,7 @@ type RegisterAgentResponse = z.infer<typeof registerAgentResponseSchema>;
 type PlatformOverview = z.infer<typeof platformOverviewSchema>;
 type SearchCampaignsParams = z.infer<typeof searchCampaignsParamsSchema>;
 type SearchCampaignsResponse = z.infer<typeof searchCampaignsResponseSchema>;
-type CampaignResponse = z.infer<typeof campaignSchema>;
+type GetCampaignResponse = z.infer<typeof getCampaignResponseSchema>;
 type CampaignDonationsResponse = z.infer<typeof donationListSchema>;
 type EvidenceResponse = z.infer<typeof evidenceResponseSchema>;
 type DonateParams = z.infer<typeof donateParamsSchema>;
@@ -217,11 +247,11 @@ export async function searchCampaigns(
 
 export async function getCampaign(
   campaign_id: string,
-): Promise<CampaignResponse> {
+): Promise<GetCampaignResponse> {
   return invokeTool(
     "get_campaign",
     { campaign_id: z.string().parse(campaign_id) },
-    campaignSchema,
+    getCampaignResponseSchema,
   );
 }
 

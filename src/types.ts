@@ -114,6 +114,13 @@ export type EvidenceData = {
   tx_hash?: string;
 };
 
+export type EvidenceSummary = {
+  document_types: Record<string, number>;
+  total_documents: number;
+  total_size_bytes: number;
+  most_recent_upload: string | null;
+};
+
 export type Campaign = {
   campaign_id: string;
   title: string;
@@ -124,7 +131,7 @@ export type Campaign = {
   goal_amount: number;
   funded_amount: number;
   creator_wallet_address: string;
-  evidence_summary?: string;
+  evidence_summary?: EvidenceSummary | null;
   verified_by?: string;
   status: string;
 };

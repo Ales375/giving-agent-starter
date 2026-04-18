@@ -32,7 +32,7 @@ import {
   recordDonation,
   recordEvidencePayment,
 } from "./budget.js";
-import type { AgentState, Campaign, EvidenceData } from "./types.js";
+import type { AgentState, Campaign, EvidenceData, EvidenceSummary } from "./types.js";
 
 const processWithEnvLoader = process as typeof process & {
   loadEnvFile?: (path?: string) => void;
@@ -92,6 +92,48 @@ function parseEvidencePrice(price: unknown): number {
   throw new Error(`Unable to parse evidence price: ${String(price)}`);
 }
 
+function normalizeEvidenceSummary(value: unknown): EvidenceSummary | null | undefined {
+  if (value === null) {
+    return null;
+  }
+
+  if (typeof value !== "object" || value === null) {
+    return undefined;
+  }
+
+  const summary = value as Record<string, unknown>;
+  const documentTypes = summary.document_types;
+
+  if (
+    typeof documentTypes !== "object" ||
+    documentTypes === null ||
+    Array.isArray(documentTypes) ||
+    typeof summary.total_documents !== "number" ||
+    typeof summary.total_size_bytes !== "number" ||
+    (typeof summary.most_recent_upload !== "string" &&
+      summary.most_recent_upload !== null)
+  ) {
+    return undefined;
+  }
+
+  const normalizedDocumentTypes: Record<string, number> = {};
+
+  for (const [key, count] of Object.entries(documentTypes)) {
+    if (typeof count !== "number") {
+      return undefined;
+    }
+
+    normalizedDocumentTypes[key] = count;
+  }
+
+  return {
+    document_types: normalizedDocumentTypes,
+    total_documents: summary.total_documents,
+    total_size_bytes: summary.total_size_bytes,
+    most_recent_upload: summary.most_recent_upload,
+  };
+}
+
 function normalizeCampaign(campaign: {
   campaign_id: string;
   title: string;
@@ -116,10 +158,7 @@ function normalizeCampaign(campaign: {
     goal_amount: campaign.goal_amount,
     funded_amount: campaign.funded_amount,
     creator_wallet_address: campaign.creator_wallet_address,
-    evidence_summary:
-      typeof campaign.evidence_summary === "string"
-        ? campaign.evidence_summary
-        : undefined,
+    evidence_summary: normalizeEvidenceSummary(campaign.evidence_summary),
     verified_by: campaign.verified_by ?? undefined,
     status: campaign.status,
   };
@@ -291,7 +330,12 @@ async function main(): Promise<void> {
 
   for (const campaign of shortlistSeed) {
     const fullCampaign = await getCampaign(campaign.campaign_id);
-    shortlist.push(normalizeCampaign(fullCampaign));
+    shortlist.push(
+      normalizeCampaign({
+        ...fullCampaign.campaign,
+        evidence_summary: fullCampaign.evidence_summary,
+      }),
+    );
   }
 
   const evidenceMap = new Map<string, EvidenceData>();
