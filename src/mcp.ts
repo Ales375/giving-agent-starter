@@ -57,9 +57,21 @@ const donationListSchema = z.object({
   total_donations: z.number(),
 });
 
+const evidenceDocumentSchema = z
+  .object({
+    document_id: z.string(),
+    document_type: z.string(),
+    submitted_at: z.string(),
+    mime_type: z.string().optional(),
+    file_size_bytes: z.number().optional(),
+    status: z.enum(["available", "removed"]).optional(),
+    deleted_at: z.string().optional(),
+  })
+  .catchall(z.unknown());
+
 const evidenceResponseSchema = z.union([
   z.object({
-    evidence_documents: z.array(z.object({}).catchall(z.unknown())),
+    evidence_documents: z.array(evidenceDocumentSchema),
   }),
   z
     .object({

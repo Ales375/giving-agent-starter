@@ -136,34 +136,48 @@ function normalizeEvidenceDocuments(
     return [];
   }
 
-  return documents.map((document, index) => {
-    const value =
-      typeof document === "object" && document !== null
-        ? (document as Record<string, unknown>)
-        : {};
+  const normalized: EvidenceData["documents"] = [];
 
-    return {
-      document_id:
-        typeof value.document_id === "string"
-          ? value.document_id
-          : `document-${index + 1}`,
-      document_type:
-        typeof value.document_type === "string" ? value.document_type : "unknown",
+  for (const [index, document] of documents.entries()) {
+    if (typeof document !== "object" || document === null) {
+      console.warn(`WARN Skipping malformed evidence document at index ${index}.`);
+      continue;
+    }
+
+    const value = document as Record<string, unknown>;
+    const documentId = value.document_id;
+    const documentType = value.document_type;
+    const submittedAt = value.submitted_at;
+
+    if (
+      typeof documentId !== "string" ||
+      documentId.trim() === "" ||
+      typeof documentType !== "string" ||
+      documentType.trim() === "" ||
+      typeof submittedAt !== "string" ||
+      submittedAt.trim() === ""
+    ) {
+      console.warn(`WARN Skipping malformed evidence document at index ${index}.`);
+      continue;
+    }
+
+    normalized.push({
+      document_id: documentId,
+      document_type: documentType,
+      submitted_at: submittedAt,
       mime_type: typeof value.mime_type === "string" ? value.mime_type : undefined,
       file_size_bytes:
         typeof value.file_size_bytes === "number" ? value.file_size_bytes : undefined,
-      submitted_at:
-        typeof value.submitted_at === "string"
-          ? value.submitted_at
-          : new Date(0).toISOString(),
       status:
         value.status === "available" || value.status === "removed"
           ? value.status
           : undefined,
       deleted_at:
         typeof value.deleted_at === "string" ? value.deleted_at : undefined,
-    };
-  });
+    });
+  }
+
+  return normalized;
 }
 
 async function main(): Promise<void> {
