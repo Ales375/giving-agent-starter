@@ -410,17 +410,39 @@ async function main(): Promise<void> {
     },
     state.api_key,
   );
+  const serverAmount = paymentInstructions.amount;
+
+  if (!Number.isFinite(serverAmount)) {
+    throw new Error(
+      `Donation payment instructions returned an invalid amount: ${String(paymentInstructions.amount)}`,
+    );
+  }
+
+  const amountDivergence = Math.abs(serverAmount - amount);
+
+  if (amountDivergence > 0.01) {
+    throw new Error(
+      `Donation payment instruction amount mismatch: local $${amount.toFixed(2)} vs server $${serverAmount.toFixed(2)}`,
+    );
+  }
+
+  if (amountDivergence > 0) {
+    console.warn(
+      `WARN Donation payment instruction amount adjusted: local $${amount.toFixed(2)} vs server $${serverAmount.toFixed(2)}`,
+    );
+  }
+
   console.log(
     `OK Paying to ${paymentInstructions.wallet_address} on ${paymentInstructions.network}.`,
   );
 
-  const txHash = await sendUSDC(paymentInstructions.wallet_address, amount);
+  const txHash = await sendUSDC(paymentInstructions.wallet_address, serverAmount);
   console.log(`OK On-chain transfer sent: ${txHash}`);
 
   const confirmation = await confirmDonation(
     {
       campaign_id: winner.campaign_id,
-      amount,
+      amount: serverAmount,
       reasoning,
       tx_hash: txHash,
     },
@@ -428,12 +450,12 @@ async function main(): Promise<void> {
   );
   console.log(`OK Donation confirmed: ${confirmation.donation_id}`);
 
-  state = recordDonation(state, amount, winner.category);
+  state = recordDonation(state, serverAmount, winner.category);
   writeState(state);
 
   console.log("OK Donation complete");
   console.log(`OK Campaign: ${winner.title}`);
-  console.log(`OK Amount: $${amount.toFixed(2)} USDC`);
+  console.log(`OK Amount: $${serverAmount.toFixed(2)} USDC`);
   console.log(`OK Tx: ${txHash}`);
   console.log(`OK Reasoning: ${reasoning}`);
 }
