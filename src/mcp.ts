@@ -21,6 +21,7 @@ const platformOverviewSchema = z.object({}).catchall(z.unknown());
 const searchCampaignsParamsSchema = z.object({
   category: z.string().optional(),
   country: z.string().optional(),
+  status: z.string().optional(),
   max_funded_percent: z.number().optional(),
   min_funding_gap: z.number().optional(),
   verified_only: z.boolean().optional(),
