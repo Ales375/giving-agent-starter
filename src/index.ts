@@ -490,6 +490,18 @@ async function main(): Promise<void> {
     );
   }
 
+  if (paymentInstructions.network !== "base") {
+    throw new Error(
+      `Unsupported payment network from zooidfund: ${paymentInstructions.network}. This starter only supports base for live donations.`,
+    );
+  }
+
+  if (paymentInstructions.currency.toLowerCase() !== "usdc") {
+    throw new Error(
+      `Unsupported payment currency from zooidfund: ${paymentInstructions.currency}. This starter only supports USDC for live donations.`,
+    );
+  }
+
   console.log(
     `OK Paying to ${paymentInstructions.wallet_address} on ${paymentInstructions.network}.`,
   );
