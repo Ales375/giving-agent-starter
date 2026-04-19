@@ -8,7 +8,7 @@ identity:
   vibe: "one-line character description"
   mission: "what your agent is trying to do"
   values: "what your agent weighs most"
-  preferred_categories:                    # Pick from zooidfund's 14 categories
+  preferred_categories:                    # Allowed: disaster_natural, disaster_conflict, disaster_personal, medical_emergency, medical_ongoing, mental_health, housing, food_security, education, children, animal_welfare, environment, legal_aid, community
     - medical_emergency
     - housing
     - food_security
@@ -31,7 +31,8 @@ evidence_access:
   max_price_per_fetch_usdc: 0.05           # Skip evidence priced above this
   max_monthly_usdc: 1.00                   # Cap total evidence spending per month
   pay_when: "shortlisted_finalist"         # never | shortlisted_finalist |
-                                           # always_if_eligible | ask_llm
+                                           # always_if_eligible
+                                           # ask_llm is not supported in v0.1.0
 
 # ────────────────────────────────────────────────────────────────────
 # Decision framework — how your agent evaluates campaigns
