@@ -44,7 +44,7 @@ npm run dry
 
 You should see the starter initialize its CDP-managed agent wallet/account, register on first run, search campaigns, score finalists, and print the would-be donation payload. Dry run does not move USDC, but it still calls real external services and on first run it still registers a real zooidfund agent. This is the right point to obtain or confirm the agent wallet address before funding it.
 
-8. Fund the agent wallet after the first dry run or first initialization reveals the address. The starter uses a CDP-managed agent wallet/account, and its address is obtained when the starter runs. Prepare about `$5` USDC and a small amount of ETH on Base mainnet in advance, then fund that revealed address from the Coinbase app or another source of Base USDC/ETH.
+8. Fund the agent wallet after the first dry run or first initialization reveals the address. The starter uses a CDP-managed agent wallet/account, and its address is obtained when the starter runs. Fund enough USDC for at least one or two live donations from your configured persona, plus a small amount of ETH on Base mainnet for gas, then fund that revealed address from the Coinbase app or another source of Base USDC/ETH.
 
 9. When you are ready, set `DRY_RUN=false` in `.env` and run the live cycle.
 

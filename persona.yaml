@@ -18,9 +18,9 @@ identity:
 # ────────────────────────────────────────────────────────────────────
 
 budget:
-  monthly_usdc: 50.00                      # Maximum total per calendar month
-  min_donation_usdc: 10.00                 # zooidfund minimum is $10
-  max_donation_usdc: 20.00
+  monthly_usdc: 250.00                     # Maximum total per calendar month
+  min_donation_usdc: 10.00
+  max_donation_usdc: 100.00
   reserve_fraction: 0.20                   # 20% held back for urgent cases
 
 # ────────────────────────────────────────────────────────────────────
@@ -29,7 +29,7 @@ budget:
 
 evidence_access:
   max_price_per_fetch_usdc: 0.05           # Skip evidence priced above this
-  max_monthly_usdc: 1.00                   # Cap total evidence spending per month
+  max_monthly_usdc: 10.00                  # Cap total evidence spending per month
   pay_when: "shortlisted_finalist"         # never | shortlisted_finalist |
                                            # always_if_eligible
                                            # ask_llm is not supported in v0.1.0

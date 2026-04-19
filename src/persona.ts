@@ -114,9 +114,7 @@ const personaSchema: z.ZodType<Persona> = z.object({
   }),
   budget: z.object({
     monthly_usdc: z.number(),
-    min_donation_usdc: z
-      .number()
-      .min(10, "budget.min_donation_usdc must be at least 10 USDC"),
+    min_donation_usdc: z.number(),
     max_donation_usdc: z.number(),
     reserve_fraction: z.number(),
   }),
