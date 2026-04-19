@@ -30,8 +30,9 @@ On each scheduled run:
 2. On first run only: registers with zooidfund via MCP `register_agent`,
    writes the API key to `.agent-state.json`. Subsequent runs skip this.
 3. Calls zooidfund MCP tools: `get_platform_overview`, `search_campaigns`
-   (filtered by persona preferences), `get_campaign` on candidates,
-   `get_campaign_donations` for peer signal
+   (broad search of active campaigns), `get_campaign` on candidates,
+   `get_campaign_donations` for peer signal; persona preferences are
+   applied later during shortlist/scoring
 4. Shortlists candidates using persona's shortlist criteria
 5. Optionally pays for evidence on finalists via MCP `get_evidence`
    (and x402 endpoint if `evidence_access_price > 0`)
@@ -160,7 +161,7 @@ evidence_access:
   max_price_per_fetch_usdc: number
   max_monthly_usdc: number
   pay_when: enum                 # never | shortlisted_finalist |
-                                 # always_if_eligible | ask_llm
+                                 # always_if_eligible
 
 decision_framework:
   weights:
@@ -175,6 +176,7 @@ decision_framework:
 ```
 
 Weights are validated to sum to 1.0 ± 0.01 at persona load.
+`evidence_access.pay_when: ask_llm` is not supported in v0.1.0.
 
 ---
 
