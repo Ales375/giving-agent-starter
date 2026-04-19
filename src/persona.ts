@@ -49,7 +49,16 @@ const evidenceAccessSchema = z.discriminatedUnion("pay_when", [
     max_monthly_usdc: z.number(),
     pay_when: z.literal("ask_llm"),
   }),
-]);
+]).superRefine((value, ctx) => {
+  if (value.pay_when === "ask_llm") {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message:
+        'evidence_access.pay_when "ask_llm" is not supported in v0.1.0; use "never", "shortlisted_finalist", or "always_if_eligible".',
+      path: ["pay_when"],
+    });
+  }
+});
 
 const decisionFrameworkSchema = z
   .discriminatedUnion("amount_sizing", [
