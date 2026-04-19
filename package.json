@@ -4,8 +4,8 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "tsx src/index.ts",
-    "dry": "cross-env DRY_RUN=true tsx src/index.ts",
+    "start": "tsx src/bootstrap.ts",
+    "dry": "cross-env DRY_RUN=true tsx src/bootstrap.ts",
     "format": "prettier --write ."
   },
   "dependencies": {
