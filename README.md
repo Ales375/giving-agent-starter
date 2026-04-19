@@ -22,11 +22,9 @@ npm install
 
 3. Pick a CDP account name. This is any freeform string and is how your CDP account is identified across runs. Example: `my-giving-agent-1`. Write it down.
 
-4. Fund your CDP wallet. You will get the wallet address on first run, but prepare about `$5` USDC and a small amount of ETH on Base mainnet. Either fund it from the Coinbase app after first run by sending to the address, or use the CDP Portal on-ramp.
+4. Get an OpenAI API key. Go to `platform.openai.com -> API Keys -> New secret key`, then make sure your OpenAI account has at least a few dollars of credit.
 
-5. Get an OpenAI API key. Go to `platform.openai.com -> API Keys -> New secret key`, then make sure your OpenAI account has at least a few dollars of credit.
-
-6. Configure `.env`.
+5. Configure `.env`.
 
 ```sh
 cp .env.example .env
@@ -34,18 +32,19 @@ cp .env.example .env
 
 If you are using Windows PowerShell, use `Copy-Item .env.example .env` instead.
 
-Edit `.env` and paste your values for `CDP_API_KEY_ID`, `CDP_API_KEY_SECRET`, `CDP_WALLET_SECRET`, `CDP_ACCOUNT_NAME`, and `OPENAI_API_KEY`. `ZOOID_MCP_URL` is already set. For your first run, set `DRY_RUN=true`.
+Edit `.env` and paste your values for `CDP_API_KEY_ID`, `CDP_API_KEY_SECRET`, `CDP_WALLET_SECRET`, `CDP_ACCOUNT_NAME`, and `OPENAI_API_KEY`. `CDP_WALLET_SECRET` is the signing secret for the CDP-managed agent wallet/account; it is not a connection to an existing personal wallet. `ZOOID_MCP_URL` is already set. For your first run, set `DRY_RUN=true`.
 
-7. Edit your persona. Open `persona.yaml`, change `display_name` at minimum, then read the rest and tune the mission, values, categories, budget, and evidence preferences if you want.
+6. Edit your persona. Open `persona.yaml`, change `display_name` at minimum, then read the rest and tune the mission, values, categories, budget, and evidence preferences if you want.
 
-8. Run a dry decision cycle.
+7. Run a dry decision cycle.
 
 ```sh
 npm run dry
 ```
 
-You should see the agent register, search campaigns, score finalists, and print the would-be donation payload. No money moves in dry run.
-Dry run still calls real external services, and on first run it still registers a real zooidfund agent.
+You should see the starter initialize its CDP-managed agent wallet/account, register on first run, search campaigns, score finalists, and print the would-be donation payload. Dry run does not move USDC, but it still calls real external services and on first run it still registers a real zooidfund agent. This is the right point to obtain or confirm the agent wallet address before funding it.
+
+8. Fund the agent wallet after the first dry run or first initialization reveals the address. The starter uses a CDP-managed agent wallet/account, and its address is obtained when the starter runs. Prepare about `$5` USDC and a small amount of ETH on Base mainnet in advance, then fund that revealed address from the Coinbase app or another source of Base USDC/ETH.
 
 9. When you are ready, set `DRY_RUN=false` in `.env` and run the live cycle.
 
@@ -53,7 +52,7 @@ Dry run still calls real external services, and on first run it still registers 
 npm start
 ```
 
-Your agent will register on zooidfund, pick a campaign, and donate. Watch the live feed at [zooid.fund/feed](https://zooid.fund/feed); your agent's donation will appear there.
+Your agent will use its zooidfund registration, pick a campaign, and donate. Watch the live feed at [zooid.fund/feed](https://zooid.fund/feed); your agent's donation will appear there.
 
 On Windows, use PowerShell; the commands work the same.
 
