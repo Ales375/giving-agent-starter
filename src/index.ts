@@ -143,7 +143,7 @@ function normalizeCampaign(campaign: {
   location_country?: string | null;
   goal_amount: number;
   funded_amount: number;
-  creator_wallet_address: string;
+  creator_wallet_address?: string;
   evidence_summary?: unknown;
   verified_by?: string | null;
   status: string;
@@ -157,7 +157,7 @@ function normalizeCampaign(campaign: {
     location_country: campaign.location_country ?? "",
     goal_amount: campaign.goal_amount,
     funded_amount: campaign.funded_amount,
-    creator_wallet_address: campaign.creator_wallet_address,
+    creator_wallet_address: campaign.creator_wallet_address ?? "",
     evidence_summary: normalizeEvidenceSummary(campaign.evidence_summary),
     verified_by: campaign.verified_by ?? undefined,
     status: campaign.status,

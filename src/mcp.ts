@@ -48,7 +48,7 @@ const campaignSchema = z.object({
   location_country: z.string().nullable().optional(),
   goal_amount: z.number(),
   funded_amount: z.number(),
-  creator_wallet_address: z.string(),
+  creator_wallet_address: z.string().optional(),
   evidence_summary: evidenceSummarySchema.nullable().optional(),
   verified_by: z.string().nullable().optional(),
   status: z.string(),
