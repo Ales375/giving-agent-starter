@@ -64,7 +64,7 @@ function clamp(value: number, min: number, max: number): number {
 
 function getEvidenceSummary(evidence: EvidenceData | undefined): string {
   if (!evidence) {
-    return "No evidence fetched.";
+    return "No evidence fetched; credibility is weakly supported unless the campaign text itself is specific and plausible.";
   }
 
   const documentSummary =
@@ -85,18 +85,22 @@ function getEvidenceSummary(evidence: EvidenceData | undefined): string {
     evidence.tx_hash ? `tx ${evidence.tx_hash}` : null,
   ].filter(Boolean);
 
-  return `Evidence via ${settlementParts.join(", ")}. Documents: ${documentSummary}`;
+  return `Evidence fetch status: ${settlementParts.join(", ")}. Document count: ${evidence.documents.length}. Documents: ${documentSummary}`;
 }
 
 function buildScoringSystemPrompt(): string {
   return [
-    "You are scoring campaigns for an autonomous giving agent.",
+    "You are scoring campaigns from the perspective of an autonomous donor-agent deciding whether to donate.",
     "You MUST NOT pick a winner. Return scores only.",
+    "Scores must be conservative when facts are sparse, ambiguous, contradictory, or weakly supported.",
+    "Do not infer missing facts beyond the campaign text and evidence summary provided.",
+    "Urgency is not proof of truth.",
+    "Extraordinary, implausible, fantastical, or physically unlikely claims should score low on credibility and evidence unless strongly substantiated.",
     "Score each campaign on four 0-10 axes using this framework:",
     "severity: humanitarian urgency and seriousness of harm, using INFORM-style disaster and emergency vocabulary. Higher for acute medical emergencies, active disasters, imminent loss, or severe instability. Lower for stable ongoing needs or projects that can wait.",
-    "marginal_impact: how much a donation changes the situation by moving the funding gap. Higher when the campaign is materially underfunded and an incremental donation matters. Lower when already near fully funded or so underfunded that one donation barely changes the outcome.",
-    "evidence_quality: credibility and relevance of documentation supporting the claim. Higher when evidence is present, relevant, and diverse. Lower when evidence is sparse, irrelevant, or absent.",
-    "category_fit: match against the persona preferred categories. Give higher scores for direct category matches, and lower scores for non-matching categories.",
+    "marginal_impact: how much an additional donation helps against the stated funding gap. Higher when the campaign is materially underfunded and an incremental donation plausibly matters. Lower when already near fully funded or so underfunded that one donation barely changes the outcome. Score more cautiously when the goal amount appears weakly justified or disproportionate to the described need.",
+    "evidence_quality: credibility and relevance of documentation supporting the claim. Higher when evidence is present, relevant, and diverse. Lower when evidence is sparse, irrelevant, absent, or undermined by implausible claims. Do not treat urgency as evidence.",
+    "category_fit: strict match against the persona preferred categories only. Give higher scores for direct category matches, and lower scores for non-matching categories. This is not a measure of overall moral worth.",
     "Be concrete and calibrated. Keep justifications brief and specific to the campaign facts provided.",
   ].join("\n");
 }
@@ -118,7 +122,13 @@ function buildScoringPrompt(
         `location: ${campaign.location}`,
         `funded_amount: ${campaign.funded_amount}`,
         `goal_amount: ${campaign.goal_amount}`,
-        `evidence_summary: ${getEvidenceSummary(evidenceMap.get(campaign.campaign_id))}`,
+        `funded_percentage: ${
+          campaign.goal_amount > 0
+            ? ((campaign.funded_amount / campaign.goal_amount) * 100).toFixed(1)
+            : "unknown"
+        }%`,
+        `verified_by: ${campaign.verified_by ?? "none"}`,
+        `evidence_signal: ${getEvidenceSummary(evidenceMap.get(campaign.campaign_id))}`,
       ].join("\n"),
     )
     .join("\n\n");
