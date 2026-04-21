@@ -213,6 +213,17 @@ function normalizeEvidenceDocuments(
           : undefined,
       deleted_at:
         typeof value.deleted_at === "string" ? value.deleted_at : undefined,
+      signed_url:
+        typeof value.signed_url === "string" || value.signed_url === null
+          ? value.signed_url
+          : undefined,
+      signed_url_expires_at:
+        typeof value.signed_url_expires_at === "string" ||
+        value.signed_url_expires_at === null
+          ? value.signed_url_expires_at
+          : undefined,
+      file_reference:
+        typeof value.file_reference === "string" ? value.file_reference : undefined,
     });
   }
 

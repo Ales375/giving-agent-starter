@@ -96,6 +96,9 @@ const evidenceDocumentSchema = z
     file_size_bytes: z.number().optional(),
     status: z.enum(["available", "removed"]).optional(),
     deleted_at: z.string().optional(),
+    signed_url: z.string().nullable().optional(),
+    signed_url_expires_at: z.string().nullable().optional(),
+    file_reference: z.string().optional(),
   })
   .catchall(z.unknown());
 

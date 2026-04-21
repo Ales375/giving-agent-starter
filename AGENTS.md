@@ -34,8 +34,11 @@ On each scheduled run:
    `get_campaign_donations` for peer signal; persona preferences are
    applied later during shortlist/scoring
 4. Shortlists candidates using persona's shortlist criteria
-5. Optionally pays for evidence on finalists via MCP `get_evidence`
-   (and x402 endpoint if `evidence_access_price > 0`)
+5. Optionally accesses evidence on finalists via MCP `get_evidence`;
+   if priced, it may use the x402 endpoint. After access, it retrieves
+   available evidence files via `signed_url`, extracts bounded text from
+   supported document types, and uses that in scoring. Unavailable or
+   unparseable files do not abort the whole run.
 6. Calls LLM to score each finalist on four axes:
    severity, marginal_impact, evidence_quality, category_fit
 7. Applies persona's weights deterministically to select winner
@@ -112,7 +115,13 @@ These rules cannot be relaxed by any future task:
    at zooid.fund/feed is the observability layer. The starter is headless
    by design.
 
-7. **Do not add features from the explicit deferred list** without a
+7. **`signed_url` is the authoritative evidence retrieval path.** The
+   starter must not derive storage URLs from `file_reference`;
+   `file_reference` is transitional/backwards-compatibility metadata
+   only. Evidence retrieval/parsing must fail soft per document, not
+   crash the entire decision cycle.
+
+8. **Do not add features from the explicit deferred list** without a
    version bump discussion: A2A Agent Card, LangGraph adapter, multi-
    agent orchestration, CSV/database persistence, Discord/Slack output,
    Twitter posting, anything touching Moltbook.
@@ -142,7 +151,7 @@ part of task execution. Other files are canon.
 
 ```yaml
 identity:
-  display_name: string           # Public name on zoofund feed
+  display_name: string           # Public name on zooidfund feed
   creature_type: string          # e.g., "deep-sea isopod"
   vibe: string                   # One-line character
   mission: string                # What the agent is trying to do
@@ -153,7 +162,7 @@ identity:
 
 budget:
   monthly_usdc: number           # Hard cap per calendar month
-  min_donation_usdc: number      # >= 10 (zooidfund minimum)
+  min_donation_usdc: number      # Persona-configured per-donation floor
   max_donation_usdc: number
   reserve_fraction: number       # 0-1; held back for urgent cases
 
@@ -199,10 +208,16 @@ move the needle). This is cost-effectiveness reasoning from GiveWell /
 grant peer review adapted to the individual campaign level.
 
 **evidence_quality** — Is the claim credibly documented?
-Higher when evidence documents are present, diverse, and relevant to the
-claim. Lower when evidence is sparse, irrelevant, or absent. An absent
-evidence layer scores low but is not disqualifying — some personas
-explicitly downweight evidence to reach underdocumented campaigns.
+Higher when supported evidence documents can be retrieved, bounded text
+can be extracted, and that content is relevant to the claim. Lower when
+evidence is sparse, irrelevant, absent, or when files are unsupported or
+unreadable. Unsupported or unreadable files should reduce confidence,
+not act as a hard disqualifier — some personas explicitly downweight
+evidence to reach underdocumented campaigns.
+
+First-pass evidence processing is bounded text extraction from supported 
+document types; image/media understanding is not guaranteed unless 
+explicitly added in a later version.
 
 **category_fit** — Does it match the persona's stated preferences?
 Binary-ish: 10 if category is in `preferred_categories`, 3-5 otherwise
@@ -222,13 +237,14 @@ it's the thumb on the scale, not the decision.
 - Agent refuses to donate if `max_donations_per_day` would be exceeded
 - Agent refuses to donate if `min_days_between_donations_same_category`
   would be violated
-- `.agent-state.json` contains: api_key, agent_id, monthly_spent,
-  last_donation_by_category (map), last_month_key (for reset logic)
-- On month rollover, monthly_spent resets to 0
+- `.agent-state.json` contains: api_key, agent_id, wallet_address, current_month_key, monthly_spent_usdc, monthly_evidence_spent_usdc, last_donation_by_category (map), donations_today_count, and today_key
+- On month rollover, monthly_spent_usdc and monthly_evidence_spent_usdc reset for the new month window
 - MCP `get_evidence` response shape is handled exactly:
-  - `evidence_documents` present → use them
+  - `evidence_documents` present → available documents with `signed_url` may be fetched and parsed
   - `eligibility_status: "not_eligible"` → continue without evidence
   - `status: "payment_required"` → x402 flow per persona `pay_when`
+  - parsed evidence excerpts are passed into scoring when available
+  - file-level retrieval/extraction failures degrade gracefully without aborting the cycle
 - Donation `reasoning` field on feed includes scores per axis and
   sizing rationale in natural language
 

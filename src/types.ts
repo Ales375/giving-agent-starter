@@ -105,6 +105,9 @@ export type EvidenceDocument = {
   submitted_at: string;
   status?: "available" | "removed";
   deleted_at?: string;
+  signed_url?: string | null;
+  signed_url_expires_at?: string | null;
+  file_reference?: string;
 };
 
 export type EvidenceData = {
