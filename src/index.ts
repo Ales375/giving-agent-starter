@@ -357,7 +357,7 @@ async function main(): Promise<void> {
     );
   }
 
-  const evidenceMap = new Map<string, EvidenceData>();
+  const evidenceMap = new Map<string, EvidenceDataWithExtractions>();
 
   for (const [index, campaign] of shortlist.entries()) {
     if (!shouldFetchEvidence(campaign, persona, index)) {

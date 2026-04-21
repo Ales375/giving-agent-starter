@@ -12,8 +12,15 @@ import type {
   Persona,
   ScoredCampaign,
 } from "./types.js";
+import type { EvidenceExtractionResult } from "./evidence.js";
 
 const DEFAULT_MODEL = openai("gpt-4o-mini");
+const MAX_EVIDENCE_EXCERPTS_PER_CAMPAIGN = 3;
+const MAX_EVIDENCE_EXCERPT_CHARS = 800;
+
+type EvidenceDataForScoring = EvidenceData & {
+  extracted_documents?: EvidenceExtractionResult[];
+};
 
 const scoreResponseSchema = z.object({
   scores: z.array(
@@ -62,7 +69,30 @@ function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
 }
 
-function getEvidenceSummary(evidence: EvidenceData | undefined): string {
+function getExtractionSummary(evidence: EvidenceDataForScoring): string {
+  if (!evidence.extracted_documents || evidence.extracted_documents.length === 0) {
+    return "No extracted evidence text available.";
+  }
+
+  return evidence.extracted_documents
+    .slice(0, MAX_EVIDENCE_EXCERPTS_PER_CAMPAIGN)
+    .map((document) => {
+      const documentLabel = [
+        document.document_id,
+        document.status,
+        document.mime_type ?? "unknown type",
+      ].join(" / ");
+
+      if (document.status === "extracted" && document.text) {
+        return `${documentLabel}: excerpt "${document.text.slice(0, MAX_EVIDENCE_EXCERPT_CHARS)}"`;
+      }
+
+      return `${documentLabel}: ${document.reason ?? "no extracted text"}`;
+    })
+    .join(" | ");
+}
+
+function getEvidenceSummary(evidence: EvidenceDataForScoring | undefined): string {
   if (!evidence) {
     return "No evidence fetched; credibility is weakly supported unless the campaign text itself is specific and plausible.";
   }
@@ -85,7 +115,7 @@ function getEvidenceSummary(evidence: EvidenceData | undefined): string {
     evidence.tx_hash ? `tx ${evidence.tx_hash}` : null,
   ].filter(Boolean);
 
-  return `Evidence fetch status: ${settlementParts.join(", ")}. Document count: ${evidence.documents.length}. Documents: ${documentSummary}`;
+  return `Evidence fetch status: ${settlementParts.join(", ")}. Document count: ${evidence.documents.length}. Documents: ${documentSummary}. Extracted evidence: ${getExtractionSummary(evidence)}`;
 }
 
 function buildScoringSystemPrompt(): string {
@@ -107,7 +137,7 @@ function buildScoringSystemPrompt(): string {
 
 function buildScoringPrompt(
   shortlist: Campaign[],
-  evidenceMap: Map<string, EvidenceData>,
+  evidenceMap: Map<string, EvidenceDataForScoring>,
   persona: Persona,
   includeJustifications: boolean,
 ): string {
@@ -217,7 +247,7 @@ export function shouldFetchEvidence(
 
 export async function scoreCampaigns(
   shortlist: Campaign[],
-  evidenceMap: Map<string, EvidenceData>,
+  evidenceMap: Map<string, EvidenceDataForScoring>,
   persona: Persona,
 ): Promise<ScoredCampaign[]> {
   const system = buildScoringSystemPrompt();
