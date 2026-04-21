@@ -64,6 +64,12 @@ function parseDryRunFlag(): boolean {
   return process.env.DRY_RUN === "true";
 }
 
+function getPersonaPath(): string {
+  const personaPath = process.env.PERSONA_PATH?.trim();
+
+  return personaPath && personaPath.length > 0 ? personaPath : "./persona.yaml";
+}
+
 function extractOverviewNumber(
   overview: unknown,
   keys: string[],
@@ -289,7 +295,7 @@ async function main(): Promise<void> {
   let persona;
 
   try {
-    persona = loadPersona("./persona.yaml");
+    persona = loadPersona(getPersonaPath());
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(`ERR persona validation failed: ${message}`);

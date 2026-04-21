@@ -1,4 +1,5 @@
 import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import YAML from "yaml";
 import { z } from "zod";
 
@@ -123,7 +124,15 @@ const personaSchema: z.ZodType<Persona> = z.object({
 });
 
 export function loadPersona(path: string): Persona {
-  const rawContents = readFileSync(path, "utf8");
-  const parsedYaml = YAML.parse(rawContents);
-  return personaSchema.parse(parsedYaml);
+  const resolvedPath = resolve(path);
+
+  try {
+    const rawContents = readFileSync(resolvedPath, "utf8");
+    const parsedYaml = YAML.parse(rawContents);
+    return personaSchema.parse(parsedYaml);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+
+    throw new Error(`Failed to load persona from ${resolvedPath}: ${message}`);
+  }
 }
