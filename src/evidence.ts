@@ -1,9 +1,23 @@
+import { openai } from "@ai-sdk/openai";
+import { generateText } from "ai";
 import { PDFParse } from "pdf-parse";
 
 import type { EvidenceDocument } from "./types.js";
 
 const MAX_EXTRACTED_CHARS = 4_000;
+const IMAGE_EXTRACTION_MODEL = openai("gpt-4o-mini");
 const PDF_MIME_TYPE = "application/pdf";
+const IMAGE_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
+const IMAGE_EXTRACTION_PROMPT = [
+  "Extract concise evidence from this image for campaign credibility scoring.",
+  "Extract visible text if present.",
+  "Describe salient visible document or scene content relevant to credibility.",
+  "Be conservative and avoid speculation.",
+  "Say when text is illegible or content is unclear.",
+  "Do not infer facts that are not visually supported.",
+  "Do not roleplay, narrate emotionally, or write a poetic caption.",
+  "Return plain text only, suitable for downstream scoring.",
+].join(" ");
 
 const SUPPORTED_MIME_TYPES = new Set([
   "text/plain",
@@ -12,6 +26,7 @@ const SUPPORTED_MIME_TYPES = new Set([
   "text/csv",
   "text/html",
   PDF_MIME_TYPE,
+  ...IMAGE_MIME_TYPES,
 ]);
 
 export type EvidenceExtractionResult = {
@@ -65,6 +80,32 @@ async function extractPdfText(body: ArrayBuffer): Promise<string> {
   }
 }
 
+async function extractImageText(
+  body: ArrayBuffer,
+  mimeType: string,
+): Promise<string> {
+  const response = await generateText({
+    model: IMAGE_EXTRACTION_MODEL,
+    temperature: 0,
+    maxOutputTokens: 300,
+    messages: [
+      {
+        role: "user",
+        content: [
+          { type: "text", text: IMAGE_EXTRACTION_PROMPT },
+          {
+            type: "image",
+            image: new Uint8Array(body),
+            mediaType: mimeType,
+          },
+        ],
+      },
+    ],
+  });
+
+  return boundText(response.text);
+}
+
 export async function extractEvidenceDocuments(
   documents: EvidenceDocument[],
 ): Promise<EvidenceExtractionResult[]> {
@@ -106,6 +147,8 @@ export async function extractEvidenceDocuments(
       const text =
         mimeType === PDF_MIME_TYPE
           ? await extractPdfText(await response.arrayBuffer())
+          : IMAGE_MIME_TYPES.has(mimeType)
+            ? await extractImageText(await response.arrayBuffer(), mimeType)
           : extractText(await response.text(), mimeType);
 
       results.push({
