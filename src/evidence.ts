@@ -1,6 +1,9 @@
+import { PDFParse } from "pdf-parse";
+
 import type { EvidenceDocument } from "./types.js";
 
 const MAX_EXTRACTED_CHARS = 4_000;
+const PDF_MIME_TYPE = "application/pdf";
 
 const SUPPORTED_MIME_TYPES = new Set([
   "text/plain",
@@ -8,6 +11,7 @@ const SUPPORTED_MIME_TYPES = new Set([
   "application/json",
   "text/csv",
   "text/html",
+  PDF_MIME_TYPE,
 ]);
 
 export type EvidenceExtractionResult = {
@@ -49,6 +53,18 @@ function extractText(body: string, mimeType: string): string {
   return boundText(body);
 }
 
+async function extractPdfText(body: ArrayBuffer): Promise<string> {
+  const parser = new PDFParse({ data: new Uint8Array(body) });
+
+  try {
+    const result = await parser.getText();
+
+    return boundText(result.text);
+  } finally {
+    await parser.destroy();
+  }
+}
+
 export async function extractEvidenceDocuments(
   documents: EvidenceDocument[],
 ): Promise<EvidenceExtractionResult[]> {
@@ -87,11 +103,16 @@ export async function extractEvidenceDocuments(
         throw new Error(`HTTP ${response.status}`);
       }
 
+      const text =
+        mimeType === PDF_MIME_TYPE
+          ? await extractPdfText(await response.arrayBuffer())
+          : extractText(await response.text(), mimeType);
+
       results.push({
         document_id: document.document_id,
         status: "extracted",
         mime_type: mimeType,
-        text: extractText(await response.text(), mimeType),
+        text,
       });
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);

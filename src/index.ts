@@ -21,6 +21,7 @@ import {
   shortlistCampaigns,
   shouldFetchEvidence,
   scoreCampaigns,
+  renderScoringEvidenceBlock,
   selectWinner,
   sizeDonation,
   generateReasoning,
@@ -238,6 +239,67 @@ function normalizeEvidenceDocuments(
   return normalized;
 }
 
+function summarizeDryRunEvidence(
+  campaign: Campaign,
+  evidenceData: EvidenceDataWithExtractions,
+) {
+  return {
+    campaign_title: campaign.title,
+    fetched_via: evidenceData.fetched_via,
+    total_document_count: evidenceData.documents.length,
+    documents: evidenceData.documents.map((document) => {
+      const extraction = evidenceData.extracted_documents.find(
+        (result) => result.document_id === document.document_id,
+      );
+
+      return {
+        document_id: document.document_id,
+        document_type: document.document_type,
+        mime_type: document.mime_type ?? null,
+        status: document.status ?? null,
+        signed_url_present: document.signed_url != null,
+        extraction_status: extraction?.status ?? null,
+        extracted_text_length:
+          extraction?.status === "extracted" ? extraction.text?.length ?? 0 : null,
+        extraction_reason:
+          extraction && extraction.status !== "extracted"
+            ? extraction.reason ?? null
+            : null,
+      };
+    }),
+  };
+}
+
+function logDryRunEvidenceDebug(
+  campaign: Campaign,
+  evidenceData: EvidenceDataWithExtractions,
+): void {
+  console.log(
+    `DRY Evidence returned/extracted:\n${JSON.stringify(
+      summarizeDryRunEvidence(campaign, evidenceData),
+      null,
+      2,
+    )}`,
+  );
+}
+
+function logDryRunScoringEvidenceBlocks(
+  shortlist: Campaign[],
+  evidenceMap: Map<string, EvidenceDataWithExtractions>,
+): void {
+  for (const campaign of shortlist) {
+    const evidenceData = evidenceMap.get(campaign.campaign_id);
+
+    if (!evidenceData) {
+      continue;
+    }
+
+    console.log(
+      `DRY Scorer evidence block for ${campaign.title}:\n${renderScoringEvidenceBlock(evidenceData)}`,
+    );
+  }
+}
+
 async function main(): Promise<void> {
   const dryRun = parseDryRunFlag();
   console.log(`OK cycle start${dryRun ? " (dry run)" : ""}`);
@@ -377,6 +439,9 @@ async function main(): Promise<void> {
         };
 
         evidenceMap.set(campaign.campaign_id, evidenceData);
+        if (dryRun) {
+          logDryRunEvidenceDebug(campaign, evidenceData);
+        }
         console.log(`OK Free evidence fetched for ${campaign.title}.`);
         continue;
       }
@@ -421,6 +486,9 @@ async function main(): Promise<void> {
         };
 
         evidenceMap.set(campaign.campaign_id, evidenceData);
+        if (dryRun) {
+          logDryRunEvidenceDebug(campaign, evidenceData);
+        }
 
         console.log(
           `OK Paid evidence fetched for ${campaign.title} at ${x402Result.settled_amount_usdc ?? price} USDC.`,
@@ -444,6 +512,10 @@ async function main(): Promise<void> {
       const message = error instanceof Error ? error.message : String(error);
       console.error(`ERR Failed to load peer donations for ${campaign.title}: ${message}`);
     }
+  }
+
+  if (dryRun) {
+    logDryRunScoringEvidenceBlocks(shortlist, evidenceMap);
   }
 
   const scored = await scoreCampaigns(shortlist, evidenceMap, persona);

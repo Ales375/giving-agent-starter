@@ -118,6 +118,12 @@ function getEvidenceSummary(evidence: EvidenceDataForScoring | undefined): strin
   return `Evidence fetch status: ${settlementParts.join(", ")}. Document count: ${evidence.documents.length}. Documents: ${documentSummary}. Extracted evidence: ${getExtractionSummary(evidence)}`;
 }
 
+export function renderScoringEvidenceBlock(
+  evidence: EvidenceDataForScoring | undefined,
+): string {
+  return `evidence_signal: ${getEvidenceSummary(evidence)}`;
+}
+
 function buildScoringSystemPrompt(): string {
   return [
     "You are scoring campaigns from the perspective of an autonomous donor-agent deciding whether to donate.",
@@ -158,7 +164,7 @@ function buildScoringPrompt(
             : "unknown"
         }%`,
         `verified_by: ${campaign.verified_by ?? "none"}`,
-        `evidence_signal: ${getEvidenceSummary(evidenceMap.get(campaign.campaign_id))}`,
+        renderScoringEvidenceBlock(evidenceMap.get(campaign.campaign_id)),
       ].join("\n"),
     )
     .join("\n\n");
