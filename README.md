@@ -8,6 +8,8 @@ Status: v0.1 reference starter.
 
 The agent scores campaigns on four axes: severity, marginal impact, evidence quality, and category fit. That framework is meant to be legible and configurable rather than mystical. Severity draws from humanitarian triage thinking, marginal impact borrows from cost-effectiveness reasoning, evidence quality reflects documentation and verification, and category fit lets the persona put a thumb on the scale without overriding everything else.
 
+When evidence is accessed, the starter treats zooidfund `signed_url` values as the authoritative retrieval path, fetches evidence files in memory during the run, and passes bounded extracted evidence into scoring when available. Current extraction supports `text/plain`, `text/markdown`, `application/json`, `text/csv`, `text/html`, `application/pdf`, `image/png`, `image/jpeg`, and `image/webp`. Unsupported, removed, unavailable, or unparseable documents degrade gracefully; extracted evidence is not persisted across runs, and the starter does not claim generic OCR, audio, video, or all-media understanding.
+
 The point is not to turn giving into a spreadsheet contest. The point is to make tradeoffs explicit enough that a builder can encode a real philosophy of giving in `persona.yaml` and have the agent follow it consistently. For the deeper explanation, read [docs/DECISION_FRAMEWORK.md](docs/DECISION_FRAMEWORK.md).
 
 ## Quickstart (15 minutes)

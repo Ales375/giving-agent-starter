@@ -37,8 +37,10 @@ On each scheduled run:
 5. Optionally accesses evidence on finalists via MCP `get_evidence`;
    if priced, it may use the x402 endpoint. After access, it retrieves
    available evidence files via `signed_url`, extracts bounded text from
-   supported document types, and uses that in scoring. Unavailable or
-   unparseable files do not abort the whole run.
+   supported document types (`text/plain`, `text/markdown`,
+   `application/json`, `text/csv`, `text/html`, `application/pdf`,
+   `image/png`, `image/jpeg`, `image/webp`), and uses that in scoring.
+   Unavailable or unparseable files do not abort the whole run.
 6. Calls LLM to score each finalist on four axes:
    severity, marginal_impact, evidence_quality, category_fit
 7. Applies persona's weights deterministically to select winner
@@ -215,9 +217,10 @@ unreadable. Unsupported or unreadable files should reduce confidence,
 not act as a hard disqualifier — some personas explicitly downweight
 evidence to reach underdocumented campaigns.
 
-First-pass evidence processing is bounded text extraction from supported 
-document types; image/media understanding is not guaranteed unless 
-explicitly added in a later version.
+Evidence processing is bounded text extraction from supported text-like
+files, PDFs, and supported image types (`image/png`, `image/jpeg`,
+`image/webp`). Broader media understanding beyond those supported types
+is not guaranteed.
 
 **category_fit** — Does it match the persona's stated preferences?
 Binary-ish: 10 if category is in `preferred_categories`, 3-5 otherwise
@@ -240,7 +243,7 @@ it's the thumb on the scale, not the decision.
 - `.agent-state.json` contains: api_key, agent_id, wallet_address, current_month_key, monthly_spent_usdc, monthly_evidence_spent_usdc, last_donation_by_category (map), donations_today_count, and today_key
 - On month rollover, monthly_spent_usdc and monthly_evidence_spent_usdc reset for the new month window
 - MCP `get_evidence` response shape is handled exactly:
-  - `evidence_documents` present → available documents with `signed_url` may be fetched and parsed
+  - `evidence_documents` present → available documents with `signed_url` may be fetched and parsed in memory for supported text-like files, PDFs, and supported image types
   - `eligibility_status: "not_eligible"` → continue without evidence
   - `status: "payment_required"` → x402 flow per persona `pay_when`
   - parsed evidence excerpts are passed into scoring when available
