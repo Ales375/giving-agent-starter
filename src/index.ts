@@ -26,6 +26,10 @@ import {
   generateReasoning,
 } from "./decision.js";
 import {
+  extractEvidenceDocuments,
+  type EvidenceExtractionResult,
+} from "./evidence.js";
+import {
   checkPreDecisionGates,
   checkPostDecisionGates,
   canAffordEvidence,
@@ -33,6 +37,10 @@ import {
   recordEvidencePayment,
 } from "./budget.js";
 import type { AgentState, Campaign, EvidenceData, EvidenceSummary } from "./types.js";
+
+type EvidenceDataWithExtractions = EvidenceData & {
+  extracted_documents: EvidenceExtractionResult[];
+};
 
 const processWithEnvLoader = process as typeof process & {
   loadEnvFile?: (path?: string) => void;
@@ -360,10 +368,15 @@ async function main(): Promise<void> {
       const evidenceResponse = await getEvidence(campaign.campaign_id, state.api_key);
 
       if ("evidence_documents" in evidenceResponse) {
-        evidenceMap.set(campaign.campaign_id, {
-          documents: normalizeEvidenceDocuments(evidenceResponse.evidence_documents),
+        const documents = normalizeEvidenceDocuments(evidenceResponse.evidence_documents);
+        const extractedDocuments = await extractEvidenceDocuments(documents);
+        const evidenceData: EvidenceDataWithExtractions = {
+          documents,
           fetched_via: "mcp_free",
-        });
+          extracted_documents: extractedDocuments,
+        };
+
+        evidenceMap.set(campaign.campaign_id, evidenceData);
         console.log(`OK Free evidence fetched for ${campaign.title}.`);
         continue;
       }
@@ -397,12 +410,17 @@ async function main(): Promise<void> {
         );
         writeState(state);
 
-        evidenceMap.set(campaign.campaign_id, {
-          documents: normalizeEvidenceDocuments(x402Result.evidence_documents),
+        const documents = normalizeEvidenceDocuments(x402Result.evidence_documents);
+        const extractedDocuments = await extractEvidenceDocuments(documents);
+        const evidenceData: EvidenceDataWithExtractions = {
+          documents,
           fetched_via: "x402_paid",
           settled_amount_usdc: x402Result.settled_amount_usdc ?? undefined,
           tx_hash: x402Result.tx_hash ?? undefined,
-        });
+          extracted_documents: extractedDocuments,
+        };
+
+        evidenceMap.set(campaign.campaign_id, evidenceData);
 
         console.log(
           `OK Paid evidence fetched for ${campaign.title} at ${x402Result.settled_amount_usdc ?? price} USDC.`,
