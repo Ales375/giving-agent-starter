@@ -21,7 +21,6 @@ import {
   shortlistCampaigns,
   shouldFetchEvidence,
   scoreCampaigns,
-  renderScoringEvidenceBlock,
   selectWinner,
   sizeDonation,
   generateReasoning,
@@ -283,23 +282,6 @@ function logDryRunEvidenceDebug(
   );
 }
 
-function logDryRunScoringEvidenceBlocks(
-  shortlist: Campaign[],
-  evidenceMap: Map<string, EvidenceDataWithExtractions>,
-): void {
-  for (const campaign of shortlist) {
-    const evidenceData = evidenceMap.get(campaign.campaign_id);
-
-    if (!evidenceData) {
-      continue;
-    }
-
-    console.log(
-      `DRY Scorer evidence block for ${campaign.title}:\n${renderScoringEvidenceBlock(evidenceData)}`,
-    );
-  }
-}
-
 async function main(): Promise<void> {
   const dryRun = parseDryRunFlag();
   console.log(`OK cycle start${dryRun ? " (dry run)" : ""}`);
@@ -512,10 +494,6 @@ async function main(): Promise<void> {
       const message = error instanceof Error ? error.message : String(error);
       console.error(`ERR Failed to load peer donations for ${campaign.title}: ${message}`);
     }
-  }
-
-  if (dryRun) {
-    logDryRunScoringEvidenceBlocks(shortlist, evidenceMap);
   }
 
   const scored = await scoreCampaigns(shortlist, evidenceMap, persona);

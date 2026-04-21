@@ -118,7 +118,7 @@ function getEvidenceSummary(evidence: EvidenceDataForScoring | undefined): strin
   return `Evidence fetch status: ${settlementParts.join(", ")}. Document count: ${evidence.documents.length}. Documents: ${documentSummary}. Extracted evidence: ${getExtractionSummary(evidence)}`;
 }
 
-export function renderScoringEvidenceBlock(
+function renderScoringEvidenceBlock(
   evidence: EvidenceDataForScoring | undefined,
 ): string {
   return `evidence_signal: ${getEvidenceSummary(evidence)}`;
