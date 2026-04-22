@@ -42,12 +42,6 @@ type EvidenceDataWithExtractions = EvidenceData & {
   extracted_documents: EvidenceExtractionResult[];
 };
 
-const processWithEnvLoader = process as typeof process & {
-  loadEnvFile?: (path?: string) => void;
-};
-
-processWithEnvLoader.loadEnvFile?.();
-
 function pad(value: number): string {
   return String(value).padStart(2, "0");
 }
