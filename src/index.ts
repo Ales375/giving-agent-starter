@@ -569,7 +569,10 @@ async function main(): Promise<void> {
     );
   }
 
-  if (paymentInstructions.network !== "base") {
+  if (
+    paymentInstructions.network !== "base" &&
+    paymentInstructions.network !== "eip155:8453"
+  ) {
     throw new Error(
       `Unsupported payment network from zooidfund: ${paymentInstructions.network}. This starter only supports base for live donations.`,
     );
