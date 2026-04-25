@@ -201,6 +201,25 @@ function normalizeToolResult(result: unknown): unknown {
   return result;
 }
 
+function redactDiagnosticValue(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((entry) => redactDiagnosticValue(entry));
+  }
+
+  if (typeof value === "object" && value !== null) {
+    return Object.fromEntries(
+      Object.entries(value).map(([key, entryValue]) => [
+        key,
+        /api[_-]?key|authorization|token|secret/i.test(key)
+          ? "[redacted]"
+          : redactDiagnosticValue(entryValue),
+      ]),
+    );
+  }
+
+  return value;
+}
+
 async function invokeTool<TParams, TResult>(
   toolName: string,
   params: TParams,
@@ -218,7 +237,22 @@ async function invokeTool<TParams, TResult>(
     }
 
     const rawResult = await tool.execute(params);
-    return responseSchema.parse(normalizeToolResult(rawResult));
+    const normalizedResult = normalizeToolResult(rawResult);
+
+    try {
+      return responseSchema.parse(normalizedResult);
+    } catch (error) {
+      if (toolName === "confirm_donation" && error instanceof z.ZodError) {
+        console.error("confirm_donation response parse failed", {
+          toolName,
+          rawResult: redactDiagnosticValue(rawResult),
+          normalizedResult: redactDiagnosticValue(normalizedResult),
+          issues: error.issues,
+        });
+      }
+
+      throw error;
+    }
   } finally {
     await client.close();
   }
