@@ -1,11 +1,8 @@
-// This module uses OpenAI gpt-4o-mini by default. To change model,
-// edit the DEFAULT_MODEL constant. To use a different provider, swap
-// the import and provider call  the Vercel AI SDK unifies the
-// interface.
 import { openai } from "@ai-sdk/openai";
 import { generateObject } from "ai";
 import { z } from "zod";
 
+import { getOpenAIModelName } from "./openai-model.js";
 import type {
   Campaign,
   EvidenceData,
@@ -14,7 +11,8 @@ import type {
 } from "./types.js";
 import type { EvidenceExtractionResult } from "./evidence.js";
 
-const DEFAULT_MODEL = openai("gpt-4o-mini");
+const SCORING_MODEL = openai(getOpenAIModelName("OPENAI_MODEL_SCORING"));
+const REASONING_MODEL = openai(getOpenAIModelName("OPENAI_MODEL_REASONING"));
 const MAX_EVIDENCE_EXCERPTS_PER_CAMPAIGN = 3;
 const MAX_EVIDENCE_EXCERPT_CHARS = 800;
 
@@ -266,7 +264,7 @@ export async function scoreCampaigns(
 
   try {
     const response = await generateObject({
-      model: DEFAULT_MODEL,
+      model: SCORING_MODEL,
       system,
       prompt,
       temperature: 0.2,
@@ -277,7 +275,7 @@ export async function scoreCampaigns(
   } catch (firstError) {
     try {
       const retryResponse = await generateObject({
-        model: DEFAULT_MODEL,
+        model: SCORING_MODEL,
         system,
         prompt: buildScoringPrompt(shortlist, evidenceMap, persona, false),
         temperature: 0.2,
@@ -403,7 +401,7 @@ export async function sizeDonation(
     case "llm_judges":
       try {
         const response = await generateObject({
-          model: DEFAULT_MODEL,
+          model: SCORING_MODEL,
           temperature: 0.2,
           schema: amountSizingSchema(min, max),
           prompt: [
@@ -453,7 +451,7 @@ export async function generateReasoning(
 ): Promise<string> {
   try {
     const response = await generateObject({
-      model: DEFAULT_MODEL,
+      model: REASONING_MODEL,
       temperature: 0.4,
       schema: reasoningSchema,
       prompt: [

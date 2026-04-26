@@ -2,10 +2,13 @@ import { openai } from "@ai-sdk/openai";
 import { generateText } from "ai";
 import { PDFParse } from "pdf-parse";
 
+import { getOpenAIModelName } from "./openai-model.js";
 import type { EvidenceDocument } from "./types.js";
 
 const MAX_EXTRACTED_CHARS = 4_000;
-const IMAGE_EXTRACTION_MODEL = openai("gpt-4o-mini");
+const IMAGE_EXTRACTION_MODEL = openai(
+  getOpenAIModelName("OPENAI_MODEL_EVIDENCE"),
+);
 const PDF_MIME_TYPE = "application/pdf";
 const IMAGE_MIME_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 const IMAGE_EXTRACTION_PROMPT = [
