@@ -37,10 +37,8 @@ On each scheduled run:
 5. Optionally accesses evidence on finalists via MCP `get_evidence`;
    if priced, it may use the x402 endpoint. After access, it retrieves
    available evidence files via `signed_url`, extracts bounded text from
-   supported document types (`text/plain`, `text/markdown`,
-   `application/json`, `text/csv`, `text/html`, `application/pdf`,
-   `image/png`, `image/jpeg`, `image/webp`), and uses that in scoring.
-   Unavailable or unparseable files do not abort the whole run.
+   supported document types, and uses that in scoring. Unavailable or
+   unparseable files do not abort the whole run.
 6. Calls LLM to score each finalist on four axes:
    severity, marginal_impact, evidence_quality, category_fit
 7. Applies persona's weights deterministically to select winner
@@ -142,8 +140,10 @@ These rules cannot be relaxed by any future task:
 | `README.md` | Claude-only during planning sessions |
 
 Codex may read any file. Codex may modify anything in `src/` and may
-update `docs/TROUBLESHOOTING.md` and `.github/workflows/donate.yml` as
-part of task execution. Other files are canon.
+update `.env.example` when runtime environment variables implemented in
+`src/` are added or changed. Codex may also update
+`docs/TROUBLESHOOTING.md` and `.github/workflows/donate.yml` as part of
+task execution. Other files are canon.
 
 ---
 
@@ -153,7 +153,7 @@ part of task execution. Other files are canon.
 
 ```yaml
 identity:
-  display_name: string           # Public name on zooidfund feed
+  display_name: string           # Public name on zoofund feed
   creature_type: string          # e.g., "deep-sea isopod"
   vibe: string                   # One-line character
   mission: string                # What the agent is trying to do
@@ -164,7 +164,7 @@ identity:
 
 budget:
   monthly_usdc: number           # Hard cap per calendar month
-  min_donation_usdc: number      # Persona-configured per-donation floor
+  min_donation_usdc: number      # >= 10 (zooidfund minimum)
   max_donation_usdc: number
   reserve_fraction: number       # 0-1; held back for urgent cases
 
@@ -217,10 +217,9 @@ unreadable. Unsupported or unreadable files should reduce confidence,
 not act as a hard disqualifier — some personas explicitly downweight
 evidence to reach underdocumented campaigns.
 
-Evidence processing is bounded text extraction from supported text-like
-files, PDFs, and supported image types (`image/png`, `image/jpeg`,
-`image/webp`). Broader media understanding beyond those supported types
-is not guaranteed.
+First-pass evidence processing is bounded text extraction from supported
+document types; image/media understanding is not yet guaranteed in
+v0.1.0-style starter scope unless explicitly added later.
 
 **category_fit** — Does it match the persona's stated preferences?
 Binary-ish: 10 if category is in `preferred_categories`, 3-5 otherwise
@@ -240,10 +239,11 @@ it's the thumb on the scale, not the decision.
 - Agent refuses to donate if `max_donations_per_day` would be exceeded
 - Agent refuses to donate if `min_days_between_donations_same_category`
   would be violated
-- `.agent-state.json` contains: api_key, agent_id, wallet_address, current_month_key, monthly_spent_usdc, monthly_evidence_spent_usdc, last_donation_by_category (map), donations_today_count, and today_key
-- On month rollover, monthly_spent_usdc and monthly_evidence_spent_usdc reset for the new month window
+- `.agent-state.json` contains: api_key, agent_id, monthly_spent,
+  last_donation_by_category (map), last_month_key (for reset logic)
+- On month rollover, monthly_spent resets to 0
 - MCP `get_evidence` response shape is handled exactly:
-  - `evidence_documents` present → available documents with `signed_url` may be fetched and parsed in memory for supported text-like files, PDFs, and supported image types
+  - `evidence_documents` present → available documents with `signed_url` may be fetched and parsed
   - `eligibility_status: "not_eligible"` → continue without evidence
   - `status: "payment_required"` → x402 flow per persona `pay_when`
   - parsed evidence excerpts are passed into scoring when available
