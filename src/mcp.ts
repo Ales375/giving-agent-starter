@@ -162,6 +162,11 @@ type ExecutableTool = {
   execute: (input: unknown) => Promise<unknown>;
 };
 
+type ToolExecutionResult = {
+  rawResult: unknown;
+  normalizedResult: unknown;
+};
+
 function getMcpUrl(): string {
   const url = process.env.ZOOID_MCP_URL;
 
@@ -220,12 +225,111 @@ function redactDiagnosticValue(value: unknown): unknown {
   return value;
 }
 
-async function invokeTool<TParams, TResult>(
+function parseToolResult<TResult>(
+  toolName: string,
+  responseSchema: z.ZodType<TResult>,
+  rawResult: unknown,
+  normalizedResult: unknown,
+): TResult {
+  try {
+    return responseSchema.parse(normalizedResult);
+  } catch (error) {
+    if (toolName === "confirm_donation" && error instanceof z.ZodError) {
+      console.error("confirm_donation response parse failed", {
+        toolName,
+        rawResult: redactDiagnosticValue(rawResult),
+        normalizedResult: redactDiagnosticValue(normalizedResult),
+        issues: error.issues,
+      });
+    }
+
+    throw error;
+  }
+}
+
+function isMcpToolErrorResult(
+  result: unknown,
+): result is { isError: true; structuredContent?: unknown } {
+  return (
+    typeof result === "object" &&
+    result !== null &&
+    "isError" in result &&
+    result.isError === true
+  );
+}
+
+function getToolErrorMessage(result: unknown): string | undefined {
+  if (
+    typeof result === "object" &&
+    result !== null &&
+    "error" in result &&
+    typeof result.error === "string"
+  ) {
+    return result.error;
+  }
+
+  return undefined;
+}
+
+function getToolErrorConfirmations(result: unknown): string | undefined {
+  if (
+    typeof result === "object" &&
+    result !== null &&
+    "data" in result &&
+    typeof result.data === "object" &&
+    result.data !== null &&
+    "confirmations" in result.data &&
+    (typeof result.data.confirmations === "string" ||
+      typeof result.data.confirmations === "number")
+  ) {
+    return String(result.data.confirmations);
+  }
+
+  return undefined;
+}
+
+function isRetryableConfirmDonationError(
+  rawResult: unknown,
+  normalizedResult: unknown,
+): boolean {
+  if (!isMcpToolErrorResult(rawResult)) {
+    return false;
+  }
+
+  const message = getToolErrorMessage(normalizedResult);
+  const confirmations = getToolErrorConfirmations(normalizedResult);
+
+  return (
+    message?.includes("Donation transaction could not be verified") === true ||
+    confirmations === "0"
+  );
+}
+
+function buildConfirmDonationError(
+  txHash: string,
+  normalizedResult: unknown,
+  attempts: number,
+): Error {
+  const message =
+    getToolErrorMessage(normalizedResult) ?? "Unknown confirmation error";
+  const confirmations = getToolErrorConfirmations(normalizedResult);
+  const confirmationSuffix =
+    confirmations === undefined ? "" : ` (confirmations: ${confirmations})`;
+
+  return new Error(
+    `confirm_donation failed for tx ${txHash} after ${attempts} attempt${attempts === 1 ? "" : "s"}: ${message}${confirmationSuffix}`,
+  );
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function executeTool<TParams>(
   toolName: string,
   params: TParams,
-  responseSchema: z.ZodType<TResult>,
   apiKey?: string,
-): Promise<TResult> {
+): Promise<ToolExecutionResult> {
   const client = await createClient(apiKey);
 
   try {
@@ -237,25 +341,23 @@ async function invokeTool<TParams, TResult>(
     }
 
     const rawResult = await tool.execute(params);
-    const normalizedResult = normalizeToolResult(rawResult);
-
-    try {
-      return responseSchema.parse(normalizedResult);
-    } catch (error) {
-      if (toolName === "confirm_donation" && error instanceof z.ZodError) {
-        console.error("confirm_donation response parse failed", {
-          toolName,
-          rawResult: redactDiagnosticValue(rawResult),
-          normalizedResult: redactDiagnosticValue(normalizedResult),
-          issues: error.issues,
-        });
-      }
-
-      throw error;
-    }
+    return {
+      rawResult,
+      normalizedResult: normalizeToolResult(rawResult),
+    };
   } finally {
     await client.close();
   }
+}
+
+async function invokeTool<TParams, TResult>(
+  toolName: string,
+  params: TParams,
+  responseSchema: z.ZodType<TResult>,
+  apiKey?: string,
+): Promise<TResult> {
+  const { rawResult, normalizedResult } = await executeTool(toolName, params, apiKey);
+  return parseToolResult(toolName, responseSchema, rawResult, normalizedResult);
 }
 
 export async function registerAgent(
@@ -334,10 +436,38 @@ export async function confirmDonation(
   params: ConfirmDonationParams,
   apiKey: string,
 ): Promise<ConfirmDonationResponse> {
-  return invokeTool(
-    "confirm_donation",
-    confirmDonationParamsSchema.parse(params),
-    confirmDonationResponseSchema,
-    z.string().min(1).parse(apiKey),
+  const parsedParams = confirmDonationParamsSchema.parse(params);
+  const parsedApiKey = z.string().min(1).parse(apiKey);
+  const retryDelaysMs = [2_000, 4_000, 8_000, 12_000];
+  let lastRetryableError: ToolExecutionResult | undefined;
+
+  for (let attempt = 0; attempt <= retryDelaysMs.length; attempt += 1) {
+    const result = await executeTool("confirm_donation", parsedParams, parsedApiKey);
+
+    if (!isMcpToolErrorResult(result.rawResult)) {
+      return parseToolResult(
+        "confirm_donation",
+        confirmDonationResponseSchema,
+        result.rawResult,
+        result.normalizedResult,
+      );
+    }
+
+    if (!isRetryableConfirmDonationError(result.rawResult, result.normalizedResult)) {
+      throw buildConfirmDonationError(parsedParams.tx_hash, result.normalizedResult, attempt + 1);
+    }
+
+    lastRetryableError = result;
+
+    if (attempt < retryDelaysMs.length) {
+      await sleep(retryDelaysMs[attempt]);
+      continue;
+    }
+  }
+
+  throw buildConfirmDonationError(
+    parsedParams.tx_hash,
+    lastRetryableError?.normalizedResult,
+    retryDelaysMs.length + 1,
   );
 }
