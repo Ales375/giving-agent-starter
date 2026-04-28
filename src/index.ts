@@ -19,6 +19,7 @@ import { getWalletAddress, sendUSDC } from "./wallet.js";
 import { fetchEvidenceViaX402 } from "./x402.js";
 import {
   shortlistCampaigns,
+  hasPositiveEvidenceSignal,
   shouldFetchEvidence,
   scoreCampaigns,
   selectWinner,
@@ -405,6 +406,23 @@ async function main(): Promise<void> {
 
   for (const [index, campaign] of shortlist.entries()) {
     if (!shouldFetchEvidence(campaign, persona, index)) {
+      if (!hasPositiveEvidenceSignal(campaign)) {
+        switch (persona.evidence_access.pay_when) {
+          case "shortlisted_finalist":
+            if (index < 3) {
+              console.log(
+                `SKIP No positive evidence signal for ${campaign.title}; skipping evidence fetch.`,
+              );
+            }
+            break;
+          case "always_if_eligible":
+            console.log(
+              `SKIP No positive evidence signal for ${campaign.title}; skipping evidence fetch.`,
+            );
+            break;
+        }
+      }
+
       continue;
     }
 

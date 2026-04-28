@@ -230,12 +230,20 @@ export function shortlistCampaigns(
     .map(({ campaign }) => campaign);
 }
 
+export function hasPositiveEvidenceSignal(campaign: Campaign): boolean {
+  const totalDocuments = campaign.evidence_summary?.total_documents;
+
+  return typeof totalDocuments === "number" && Number.isFinite(totalDocuments) && totalDocuments > 0;
+}
+
 export function shouldFetchEvidence(
   campaign: Campaign,
   persona: Persona,
   shortlistRank: number,
 ): boolean {
-  void campaign;
+  if (!hasPositiveEvidenceSignal(campaign)) {
+    return false;
+  }
 
   switch (persona.evidence_access.pay_when) {
     case "never":
