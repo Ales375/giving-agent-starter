@@ -379,7 +379,7 @@ async function main(): Promise<void> {
   }
 
   const searchCampaignsNormalized = searchResult.campaigns.map(normalizeCampaign);
-  const shortlistSeed = shortlistCampaigns(searchCampaignsNormalized, persona);
+  const shortlistSeed = await shortlistCampaigns(searchCampaignsNormalized, persona);
 
   if (shortlistSeed.length === 0) {
     console.log("SKIP No campaigns pass shortlist");

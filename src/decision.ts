@@ -13,6 +13,8 @@ import type { EvidenceExtractionResult } from "./evidence.js";
 
 const SCORING_MODEL = openai(getOpenAIModelName("OPENAI_MODEL_SCORING"));
 const REASONING_MODEL = openai(getOpenAIModelName("OPENAI_MODEL_REASONING"));
+const SHORTLIST_LIMIT = 5;
+const MAX_TRIAGE_DESCRIPTION_CHARS = 280;
 const MAX_EVIDENCE_EXCERPTS_PER_CAMPAIGN = 3;
 const MAX_EVIDENCE_EXCERPT_CHARS = 800;
 
@@ -59,12 +61,33 @@ const reasoningSchema = z.object({
   reasoning: z.string().min(20).max(500),
 });
 
+const shortlistResponseSchema = z.object({
+  selected: z
+    .array(
+      z.object({
+        campaign_id: z.string(),
+        triage_reason: z.string().min(1).max(240),
+      }),
+    )
+    .max(SHORTLIST_LIMIT),
+});
+
 function roundToTwo(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
 function clamp(value: number, min: number, max: number): number {
   return Math.min(max, Math.max(min, value));
+}
+
+function truncateText(text: string, maxChars: number): string {
+  const compactText = text.trim().replace(/\s+/g, " ");
+
+  if (compactText.length <= maxChars) {
+    return compactText;
+  }
+
+  return `${compactText.slice(0, maxChars)}...`;
 }
 
 function getExtractionSummary(evidence: EvidenceDataForScoring): string {
@@ -205,29 +228,183 @@ function computeWeightedScore(
   );
 }
 
-export function shortlistCampaigns(
+function buildShortlistSystemPrompt(): string {
+  return [
+    "You are triaging fundraising campaigns for deeper evaluation by an autonomous donor-agent.",
+    "Your task is ONLY to select a shortlist for later scoring, not to pick a final winner.",
+    "Select up to 5 campaigns that are plausible candidates for deeper evaluation.",
+    "Campaign goal amounts are creator-entered and may be arbitrary, inflated, stale, or weakly justified.",
+    "Do not use the stated goal amount as an objective measure of need.",
+    "Prefer campaigns whose public narrative is specific, plausible, time-sensitive, and proportionate.",
+    "Prefer campaigns with positive evidence-summary signals when available.",
+    "Consider the persona mission, values, and preferred categories.",
+    "Penalize vague, generic, fantastical, implausible, internally inconsistent, or financially disproportionate claims.",
+    "Retain some diversity where possible so the later scoring step has meaningful alternatives.",
+    "Return only the selected campaign IDs with brief triage reasons.",
+  ].join("\n");
+}
+
+function formatEvidenceSummaryForTriage(campaign: Campaign): string {
+  const summary = campaign.evidence_summary;
+
+  if (!summary || !Number.isFinite(summary.total_documents)) {
+    return "unknown";
+  }
+
+  const documentTypes = Object.entries(summary.document_types)
+    .map(([type, count]) => `${type}:${count}`)
+    .join(", ");
+
+  return `total_documents=${summary.total_documents}${documentTypes ? `; document_types=${documentTypes}` : ""}`;
+}
+
+function buildShortlistPrompt(campaigns: Campaign[], persona: Persona): string {
+  const campaignsText = campaigns
+    .map((campaign, index) =>
+      [
+        `Campaign ${index + 1}`,
+        `campaign_id: ${campaign.campaign_id}`,
+        `title: ${truncateText(campaign.title, 120)}`,
+        `description: ${truncateText(campaign.description, MAX_TRIAGE_DESCRIPTION_CHARS)}`,
+        `category: ${campaign.category}`,
+        `location: ${campaign.location || campaign.location_country || "unknown"}`,
+        `funded_amount: ${campaign.funded_amount}`,
+        `goal_amount_creator_supplied: ${campaign.goal_amount}`,
+        `verified_by: ${campaign.verified_by ?? "none"}`,
+        `evidence_summary: ${formatEvidenceSummaryForTriage(campaign)}`,
+      ].join("\n"),
+    )
+    .join("\n\n");
+
+  return [
+    "Persona context:",
+    `mission: ${persona.identity.mission}`,
+    `values: ${persona.identity.values}`,
+    `preferred_categories: ${persona.identity.preferred_categories.join(", ")}`,
+    "",
+    "Campaigns for triage:",
+    campaignsText,
+    "",
+    "Return up to 5 selected campaigns for deeper evaluation.",
+  ].join("\n");
+}
+
+function hasEvaluationReadyNarrative(campaign: Campaign): boolean {
+  return campaign.title.trim().length >= 12 && campaign.description.trim().length >= 80;
+}
+
+function buildDeterministicFallbackShortlist(
   campaigns: Campaign[],
   persona: Persona,
 ): Campaign[] {
   return campaigns
     .filter((campaign) => campaign.status === "active")
-    .filter((campaign) => campaign.funded_amount < campaign.goal_amount)
     .map((campaign) => {
-      const funding_gap = campaign.goal_amount - campaign.funded_amount;
-      const categoryBoost = persona.identity.preferred_categories.includes(
-        campaign.category,
-      )
-        ? 2
-        : 1;
+      let heuristicScore = 0;
+
+      if (persona.identity.preferred_categories.includes(campaign.category)) {
+        heuristicScore += 4;
+      }
+
+      if (hasPositiveEvidenceSignal(campaign)) {
+        heuristicScore += 3;
+      }
+
+      if (hasEvaluationReadyNarrative(campaign)) {
+        heuristicScore += 2;
+      } else if (
+        campaign.title.trim().length >= 8 &&
+        campaign.description.trim().length >= 40
+      ) {
+        heuristicScore += 1;
+      }
+
+      if (campaign.verified_by) {
+        heuristicScore += 0.5;
+      }
 
       return {
         campaign,
-        heuristic_score: funding_gap * categoryBoost,
+        heuristic_score: heuristicScore,
       };
     })
     .sort((left, right) => right.heuristic_score - left.heuristic_score)
-    .slice(0, 5)
+    .slice(0, SHORTLIST_LIMIT)
     .map(({ campaign }) => campaign);
+}
+
+export async function shortlistCampaigns(
+  campaigns: Campaign[],
+  persona: Persona,
+): Promise<Campaign[]> {
+  const activeCampaigns = campaigns.filter((campaign) => campaign.status === "active");
+
+  if (activeCampaigns.length === 0) {
+    return [];
+  }
+
+  try {
+    const response = await generateObject({
+      model: SCORING_MODEL,
+      system: buildShortlistSystemPrompt(),
+      prompt: buildShortlistPrompt(activeCampaigns, persona),
+      temperature: 0.2,
+      schema: shortlistResponseSchema,
+    });
+
+    const campaignsById = new Map(
+      activeCampaigns.map((campaign) => [campaign.campaign_id, campaign]),
+    );
+    const selectedCampaigns: Campaign[] = [];
+    const seenCampaignIds = new Set<string>();
+
+    for (const entry of response.object.selected) {
+      const campaign = campaignsById.get(entry.campaign_id);
+
+      if (!campaign || seenCampaignIds.has(entry.campaign_id)) {
+        continue;
+      }
+
+      selectedCampaigns.push(campaign);
+      seenCampaignIds.add(entry.campaign_id);
+    }
+
+    if (selectedCampaigns.length < 1) {
+      console.warn(
+        "WARN Shortlist triage returned no valid campaign IDs; using deterministic fallback.",
+      );
+      return buildDeterministicFallbackShortlist(activeCampaigns, persona);
+    }
+
+    if (selectedCampaigns.length >= SHORTLIST_LIMIT) {
+      return selectedCampaigns.slice(0, SHORTLIST_LIMIT);
+    }
+
+    const fallbackCampaigns = buildDeterministicFallbackShortlist(
+      activeCampaigns,
+      persona,
+    );
+
+    for (const campaign of fallbackCampaigns) {
+      if (selectedCampaigns.length >= SHORTLIST_LIMIT) {
+        break;
+      }
+
+      if (seenCampaignIds.has(campaign.campaign_id)) {
+        continue;
+      }
+
+      selectedCampaigns.push(campaign);
+      seenCampaignIds.add(campaign.campaign_id);
+    }
+
+    return selectedCampaigns;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`WARN Shortlist triage failed: ${message}. Using deterministic fallback.`);
+
+    return buildDeterministicFallbackShortlist(activeCampaigns, persona);
+  }
 }
 
 export function hasPositiveEvidenceSignal(campaign: Campaign): boolean {

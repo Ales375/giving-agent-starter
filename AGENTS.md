@@ -33,7 +33,7 @@ On each scheduled run:
    (broad search of active campaigns), `get_campaign` on candidates,
    `get_campaign_donations` for peer signal; persona preferences are
    applied later during shortlist/scoring
-4. Shortlists candidates using persona's shortlist criteria
+4. Shortlists candidates using a bounded LLM triage pass over broad active campaign search results. The triage pass uses persona preferences, campaign specificity, plausibility, apparent urgency, proportionality of the request, under-attention, and evidence-summary signals. It must not treat creator-entered fundraising goals as objective need or as a direct ranking signal.
 5. Optionally accesses evidence on finalists via MCP `get_evidence`;
    if priced, it may use the x402 endpoint. After access, it retrieves
    available evidence files via `signed_url`, extracts bounded text from
