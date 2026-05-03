@@ -297,9 +297,13 @@ function buildShortlistSystemPrompt(): string {
     "You are triaging fundraising campaigns for deeper evaluation by an autonomous donor-agent.",
     "Your task is ONLY to select a shortlist for later scoring, not to pick a final winner.",
     "Select up to 5 campaigns that are plausible candidates for deeper evaluation.",
+    "Reflect the persona's decision weights during triage.",
     "Campaign goal amounts are creator-entered and may be arbitrary, inflated, stale, or weakly justified.",
     "Do not use the stated goal amount as an objective measure of need.",
     "Prefer campaigns whose public narrative is specific, plausible, time-sensitive, and proportionate.",
+    "Evidence is not a universal hard requirement.",
+    "Treat absence of evidence as a credibility limitation, not proof that a campaign is false.",
+    "When the persona's evidence_quality weight is high, campaigns with positive evidence-summary signals should receive materially stronger shortlist preference.",
     "Prefer campaigns with positive evidence-summary signals when available.",
     "Consider the persona mission, values, and preferred categories.",
     "Penalize vague, generic, fantastical, implausible, internally inconsistent, or financially disproportionate claims.",
@@ -345,6 +349,7 @@ function buildShortlistPrompt(campaigns: Campaign[], persona: Persona): string {
     `mission: ${persona.identity.mission}`,
     `values: ${persona.identity.values}`,
     `preferred_categories: ${persona.identity.preferred_categories.join(", ")}`,
+    `decision_weights: severity=${persona.decision_framework.weights.severity}, marginal_impact=${persona.decision_framework.weights.marginal_impact}, evidence_quality=${persona.decision_framework.weights.evidence_quality}, category_fit=${persona.decision_framework.weights.category_fit}`,
     "",
     "Campaigns for triage:",
     campaignsText,
@@ -361,6 +366,8 @@ function buildDeterministicFallbackShortlist(
   campaigns: Campaign[],
   persona: Persona,
 ): Campaign[] {
+  const evidenceBoost = 1 + persona.decision_framework.weights.evidence_quality * 4;
+
   return campaigns
     .filter((campaign) => campaign.status === "active")
     .map((campaign) => {
@@ -371,7 +378,7 @@ function buildDeterministicFallbackShortlist(
       }
 
       if (hasPositiveEvidenceSignal(campaign)) {
-        heuristicScore += 3;
+        heuristicScore += evidenceBoost;
       }
 
       if (hasEvaluationReadyNarrative(campaign)) {
