@@ -228,6 +228,70 @@ function computeWeightedScore(
   );
 }
 
+function getMissingCampaigns(
+  shortlist: Campaign[],
+  scoresById: Map<string, unknown>,
+): Campaign[] {
+  return shortlist.filter((campaign) => !scoresById.has(campaign.campaign_id));
+}
+
+function buildFallbackJustifications() {
+  return {
+    severity: "Fallback score assigned because the scoring model omitted this campaign.",
+    marginal_impact:
+      "Fallback score assigned because the scoring model omitted this campaign.",
+    evidence_quality:
+      "Fallback score assigned because the scoring model omitted this campaign.",
+    category_fit:
+      "Fallback score assigned because the scoring model omitted this campaign.",
+  };
+}
+
+function buildFallbackScores(
+  campaign: Campaign,
+  persona: Persona,
+): {
+  severity: number;
+  marginal_impact: number;
+  evidence_quality: number;
+  category_fit: number;
+  justifications: ReturnType<typeof buildFallbackJustifications>;
+} {
+  return {
+    severity: 0,
+    marginal_impact: 0,
+    evidence_quality: 0,
+    category_fit: persona.identity.preferred_categories.includes(campaign.category) ? 3 : 0,
+    justifications: buildFallbackJustifications(),
+  };
+}
+
+async function recoverMissingScores(
+  missingCampaigns: Campaign[],
+  evidenceMap: Map<string, EvidenceDataForScoring>,
+  persona: Persona,
+): Promise<z.infer<typeof retryScoreResponseSchema>["scores"] | null> {
+  if (missingCampaigns.length === 0) {
+    return [];
+  }
+
+  try {
+    const response = await generateObject({
+      model: SCORING_MODEL,
+      system: buildScoringSystemPrompt(),
+      prompt: buildScoringPrompt(missingCampaigns, evidenceMap, persona, false),
+      temperature: 0.2,
+      schema: retryScoreResponseSchema,
+    });
+
+    return response.object.scores;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    console.warn(`WARN scoreCampaigns recovery failed: ${message}`);
+    return null;
+  }
+}
+
 function buildShortlistSystemPrompt(): string {
   return [
     "You are triaging fundraising campaigns for deeper evaluation by an autonomous donor-agent.",
@@ -507,6 +571,44 @@ export async function scoreCampaigns(
       justifications:
         "justifications" in entry ? entry.justifications : buildRetryJustifications(),
     });
+  }
+
+  let missingCampaigns = getMissingCampaigns(shortlist, scoresById);
+
+  if (missingCampaigns.length > 0) {
+    console.warn(
+      `WARN scoreCampaigns missing scores for campaign IDs: ${missingCampaigns.map((campaign) => campaign.campaign_id).join(", ")}`,
+    );
+
+    const recoveredEntries = await recoverMissingScores(
+      missingCampaigns,
+      evidenceMap,
+      persona,
+    );
+
+    if (recoveredEntries) {
+      for (const entry of recoveredEntries) {
+        scoresById.set(entry.campaign_id, {
+          severity: entry.severity,
+          marginal_impact: entry.marginal_impact,
+          evidence_quality: entry.evidence_quality,
+          category_fit: entry.category_fit,
+          justifications: buildRetryJustifications(),
+        });
+      }
+    }
+
+    missingCampaigns = getMissingCampaigns(shortlist, scoresById);
+  }
+
+  if (missingCampaigns.length > 0) {
+    console.warn(
+      `WARN scoreCampaigns assigning fallback scores for campaign IDs: ${missingCampaigns.map((campaign) => campaign.campaign_id).join(", ")}`,
+    );
+
+    for (const campaign of missingCampaigns) {
+      scoresById.set(campaign.campaign_id, buildFallbackScores(campaign, persona));
+    }
   }
 
   return shortlist.map((campaign) => {
