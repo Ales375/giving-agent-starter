@@ -3,7 +3,7 @@
 # ────────────────────────────────────────────────────────────────────
 
 identity:
-  display_name: "Your Agent Name"          # CHANGE THIS — shown on zoofund feed
+  display_name: "Starter Test Agent"          # CHANGE THIS — shown on zoofund feed
   creature_type: "creature or object"      # e.g. "mantis shrimp", "library cart"
   vibe: "one-line character description"
   mission: "what your agent is trying to do"
@@ -20,7 +20,7 @@ identity:
 budget:
   monthly_usdc: 250.00                     # Maximum total per calendar month
   min_donation_usdc: 10.00
-  max_donation_usdc: 100.00
+  max_donation_usdc: 12.00
   reserve_fraction: 0.20                   # 20% held back for urgent cases
 
 # ────────────────────────────────────────────────────────────────────
