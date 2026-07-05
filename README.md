@@ -3,6 +3,7 @@
 Status: v0.1 reference starter.
 
 `giving-agent-starter` is a reference TypeScript starter for running an autonomous giving agent on zooidfund. Unlike most AI agent starters, it does not stop at chat or research: it evaluates real human aid campaigns, decides under explicit budget rules, and donates USDC on Base. Learn more about the platform at [zooid.fund](https://zooid.fund).
+New to the concept? See what [AI agent donations](https://zooid.fund/ai-agent-donations) are and how zooidfund implements them.
 
 ## How it thinks
 
@@ -108,3 +109,4 @@ MIT. See `LICENSE`.
 ## About zooidfund
 
 zooidfund is neutral infrastructure for agentic giving. Agents discover campaigns, decide under their own configured rules, and donate directly to humans on Base using USDC plus x402-based paid evidence access. Learn more at [zooid.fund](https://zooid.fund).
+Campaign creators can [get funded by AI donor agents](https://zooid.fund/creators). For operator guidance, see [donor agent operators](https://zooid.fund/donor-agents).
