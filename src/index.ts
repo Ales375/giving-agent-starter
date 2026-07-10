@@ -12,6 +12,7 @@ import {
   getCampaign,
   getCampaignDonations,
   getEvidence,
+  acknowledgeAgentTerms,
   donate,
   confirmDonation,
 } from "./mcp.js";
@@ -38,6 +39,19 @@ import {
   recordEvidencePayment,
 } from "./budget.js";
 import type { AgentState, Campaign, EvidenceData, EvidenceSummary } from "./types.js";
+
+const AGENT_TERMS_URL = "https://zooid.fund/terms";
+const AGENT_PRIVACY_URL = "https://zooid.fund/privacy";
+const AGENT_EVIDENCE_TERMS_URL =
+  "https://zooid.fund/terms#agent-evidence-access";
+const ACKNOWLEDGEMENT_FLAG = "--acknowledge-current-terms";
+
+class OperatorAcknowledgementRequiredError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "OperatorAcknowledgementRequiredError";
+  }
+}
 
 type EvidenceDataWithExtractions = EvidenceData & {
   extracted_documents: EvidenceExtractionResult[];
@@ -285,6 +299,9 @@ function logDryRunEvidenceDebug(
 
 async function main(): Promise<void> {
   const dryRun = parseDryRunFlag();
+  const operatorAcknowledgementAuthorized = process.argv.includes(
+    ACKNOWLEDGEMENT_FLAG,
+  );
   console.log(`OK cycle start${dryRun ? " (dry run)" : ""}`);
 
   let persona;
@@ -300,11 +317,18 @@ async function main(): Promise<void> {
   let state = readState();
 
   if (state === null) {
+    if (!operatorAcknowledgementAuthorized) {
+      throw new Error(
+        `Agent registration requires explicit operator acknowledgement. Review ${AGENT_TERMS_URL}, ${AGENT_PRIVACY_URL}, and ${AGENT_EVIDENCE_TERMS_URL}, then rerun once with ${ACKNOWLEDGEMENT_FLAG}.`,
+      );
+    }
+
     const walletAddress = await getWalletAddress();
     const registration = await registerAgent({
       display_name: persona.identity.display_name,
       mission: persona.identity.mission,
       wallet_address: walletAddress,
+      operator_acknowledgement: true,
       creature_type: persona.identity.creature_type,
       vibe: persona.identity.vibe,
       values: persona.identity.values,
@@ -427,7 +451,42 @@ async function main(): Promise<void> {
     }
 
     try {
-      const evidenceResponse = await getEvidence(campaign.campaign_id, state.api_key);
+      let evidenceResponse = await getEvidence(campaign.campaign_id, state.api_key);
+
+      if (
+        "eligibility_status" in evidenceResponse &&
+        evidenceResponse.eligibility_status === "not_eligible" &&
+        evidenceResponse.reason === "operator_acknowledgement_required"
+      ) {
+        if (!operatorAcknowledgementAuthorized) {
+          throw new OperatorAcknowledgementRequiredError(
+            `Evidence access requires explicit operator acknowledgement. Review ${evidenceResponse.terms_url ?? AGENT_TERMS_URL}, ${evidenceResponse.privacy_url ?? AGENT_PRIVACY_URL}, and ${evidenceResponse.evidence_terms_url ?? AGENT_EVIDENCE_TERMS_URL}, then rerun once with ${ACKNOWLEDGEMENT_FLAG}.`,
+          );
+        }
+
+        let acknowledgement: Awaited<ReturnType<typeof acknowledgeAgentTerms>>;
+        try {
+          acknowledgement = await acknowledgeAgentTerms(state.api_key);
+        } catch (error) {
+          const message = error instanceof Error ? error.message : String(error);
+          throw new OperatorAcknowledgementRequiredError(
+            `Failed to record operator acknowledgement: ${message}`,
+          );
+        }
+        console.log(
+          `OK Agent terms acknowledged at ${acknowledgement.acknowledged_at} (terms ${acknowledgement.terms_version}, privacy ${acknowledgement.privacy_version}, evidence ${acknowledgement.evidence_terms_version}).`,
+        );
+        evidenceResponse = await getEvidence(campaign.campaign_id, state.api_key);
+
+        if (
+          "eligibility_status" in evidenceResponse &&
+          evidenceResponse.reason === "operator_acknowledgement_required"
+        ) {
+          throw new OperatorAcknowledgementRequiredError(
+            "Agent acknowledgement was recorded but the evidence gate still rejects access.",
+          );
+        }
+      }
 
       if ("evidence_documents" in evidenceResponse) {
         const documents = normalizeEvidenceDocuments(evidenceResponse.evidence_documents);
@@ -495,6 +554,9 @@ async function main(): Promise<void> {
         );
       }
     } catch (error) {
+      if (error instanceof OperatorAcknowledgementRequiredError) {
+        throw error;
+      }
       const message = error instanceof Error ? error.message : String(error);
       console.error(`ERR Evidence fetch failed for ${campaign.title}: ${message}`);
     }

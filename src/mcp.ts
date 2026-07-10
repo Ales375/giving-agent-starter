@@ -5,6 +5,7 @@ const registerAgentParamsSchema = z.object({
   display_name: z.string(),
   mission: z.string(),
   wallet_address: z.string(),
+  operator_acknowledgement: z.literal(true),
   creature_type: z.string().optional(),
   vibe: z.string().optional(),
   values: z.string().optional(),
@@ -106,11 +107,16 @@ const evidenceResponseSchema = z.union([
   z.object({
     evidence_documents: z.array(evidenceDocumentSchema),
   }),
-  z
-    .object({
-      eligibility_status: z.literal("not_eligible"),
-    })
-    .catchall(z.unknown()),
+    z
+      .object({
+        eligibility_status: z.literal("not_eligible"),
+        reason: z.string().optional(),
+        next_step: z.string().optional(),
+        terms_url: z.string().url().optional(),
+        privacy_url: z.string().url().optional(),
+        evidence_terms_url: z.string().url().optional(),
+      })
+      .catchall(z.unknown()),
   z.object({
     status: z.literal("payment_required"),
     x402_endpoint: z.string(),
@@ -118,6 +124,18 @@ const evidenceResponseSchema = z.union([
     currency: z.string(),
   }),
 ]);
+
+const acknowledgeAgentTermsResponseSchema = z.object({
+  acknowledged: z.literal(true),
+  agent_id: z.string(),
+  terms_version: z.string(),
+  privacy_version: z.string(),
+  evidence_terms_version: z.string(),
+  acknowledged_at: z.string(),
+  terms_url: z.string().url().optional(),
+  privacy_url: z.string().url().optional(),
+  evidence_terms_url: z.string().url().optional(),
+});
 
 const donateParamsSchema = z.object({
   campaign_id: z.string(),
@@ -153,6 +171,9 @@ type SearchCampaignsResponse = z.infer<typeof searchCampaignsResponseSchema>;
 type GetCampaignResponse = z.infer<typeof getCampaignResponseSchema>;
 type CampaignDonationsResponse = z.infer<typeof donationListSchema>;
 type EvidenceResponse = z.infer<typeof evidenceResponseSchema>;
+type AcknowledgeAgentTermsResponse = z.infer<
+  typeof acknowledgeAgentTermsResponseSchema
+>;
 type DonateParams = z.infer<typeof donateParamsSchema>;
 type DonateResponse = z.infer<typeof donateResponseSchema>;
 type ConfirmDonationParams = z.infer<typeof confirmDonationParamsSchema>;
@@ -416,6 +437,17 @@ export async function getEvidence(
     "get_evidence",
     { campaign_id: z.string().parse(campaign_id) },
     evidenceResponseSchema,
+    z.string().min(1).parse(apiKey),
+  );
+}
+
+export async function acknowledgeAgentTerms(
+  apiKey: string,
+): Promise<AcknowledgeAgentTermsResponse> {
+  return invokeTool(
+    "acknowledge_agent_terms",
+    { operator_acknowledgement: true as const },
+    acknowledgeAgentTermsResponseSchema,
     z.string().min(1).parse(apiKey),
   );
 }

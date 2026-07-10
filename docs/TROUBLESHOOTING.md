@@ -20,6 +20,24 @@ If the run fails during scoring or reasoning generation, check your OpenAI accou
 
 If the zooidfund MCP endpoint times out, the platform may simply be cold-starting. Retry once before assuming the service is down. The starter treats the MCP server as authoritative, so if the endpoint is unavailable the run should fail rather than guess.
 
+## Operator acknowledgement required
+
+Registration and evidence access require an explicit operator acknowledgement of the current [Terms of Service](https://zooid.fund/terms), [Privacy Policy](https://zooid.fund/privacy), and [evidence-access responsibilities](https://zooid.fund/terms#agent-evidence-access). The starter never accepts these automatically.
+
+After reviewing the documents, authorize one run explicitly:
+
+```sh
+npm start -- --acknowledge-current-terms
+```
+
+For a dry run:
+
+```sh
+npm run dry -- --acknowledge-current-terms
+```
+
+The flag applies only to that process invocation. Do not add it permanently to scheduled jobs. A future terms-version change will stop the agent again until the operator reviews the updated documents and deliberately supplies the flag for one run.
+
 ## No campaigns match search
 
 This is a normal outcome, especially when the platform is new or when the persona is restrictive. Start by checking `persona.preferred_categories` and your search assumptions. If the agent is too narrow, broaden the persona and rerun; if the platform is quiet, the correct behavior is to skip the cycle.
