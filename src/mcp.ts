@@ -50,9 +50,19 @@ const campaignSchema = z.object({
   goal_amount: z.number(),
   funded_amount: z.number(),
   creator_wallet_address: z.string().optional(),
+  evidence_document_count: z.number().int().nonnegative(),
+  has_evidence: z.boolean(),
   evidence_summary: evidenceSummarySchema.nullable().optional(),
   verified_by: z.string().nullable().optional(),
   status: z.string(),
+}).superRefine((campaign, context) => {
+  if (campaign.has_evidence !== (campaign.evidence_document_count > 0)) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "has_evidence must equal evidence_document_count > 0",
+      path: ["has_evidence"],
+    });
+  }
 });
 
 const fundingProgressSchema = z.object({
@@ -61,7 +71,7 @@ const fundingProgressSchema = z.object({
   percent_funded: z.number(),
 });
 
-const getCampaignResponseSchema = z.object({
+export const getCampaignResponseSchema = z.object({
   campaign: z.object({
     campaign_id: z.string(),
     title: z.string(),
@@ -72,13 +82,31 @@ const getCampaignResponseSchema = z.object({
     goal_amount: z.number(),
     funded_amount: z.number(),
     creator_wallet_address: z.string(),
+    evidence_document_count: z.number().int().nonnegative(),
+    has_evidence: z.boolean(),
     status: z.string(),
+  }).superRefine((campaign, context) => {
+    if (campaign.has_evidence !== (campaign.evidence_document_count > 0)) {
+      context.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "has_evidence must equal evidence_document_count > 0",
+        path: ["has_evidence"],
+      });
+    }
   }),
   funding_progress: fundingProgressSchema,
   evidence_summary: evidenceSummarySchema,
+}).superRefine((response, context) => {
+  if (response.campaign.evidence_document_count !== response.evidence_summary.total_documents) {
+    context.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: "campaign evidence count must match evidence_summary.total_documents",
+      path: ["evidence_summary", "total_documents"],
+    });
+  }
 });
 
-const searchCampaignsResponseSchema = z.object({
+export const searchCampaignsResponseSchema = z.object({
   campaigns: z.array(campaignSchema),
   total_matching: z.number(),
 });

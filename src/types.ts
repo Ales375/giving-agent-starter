@@ -134,6 +134,8 @@ export type Campaign = {
   goal_amount: number;
   funded_amount: number;
   creator_wallet_address: string;
+  evidence_document_count: number;
+  has_evidence: boolean;
   evidence_summary?: EvidenceSummary | null;
   verified_by?: string;
   status: string;

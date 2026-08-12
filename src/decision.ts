@@ -302,9 +302,9 @@ function buildShortlistSystemPrompt(): string {
     "Do not use the stated goal amount as an objective measure of need.",
     "Prefer campaigns whose public narrative is specific, plausible, time-sensitive, and proportionate.",
     "Evidence is not a universal hard requirement.",
-    "Treat absence of evidence as a credibility limitation, not proof that a campaign is false.",
-    "When the persona's evidence_quality weight is high, campaigns with positive evidence-summary signals should receive materially stronger shortlist preference.",
-    "Prefer campaigns with positive evidence-summary signals when available.",
+    "Treat absence of current evidence documents as an availability fact, not evidence that a campaign is false or less credible.",
+    "Evidence document availability is factual metadata, not evidence quality or campaign verification.",
+    "Do not prefer a campaign because it has more documents. Use availability only to identify what can be inspected during deeper evaluation.",
     "Consider the persona mission, values, and preferred categories.",
     "Penalize vague, generic, fantastical, implausible, internally inconsistent, or financially disproportionate claims.",
     "Retain some diversity where possible so the later scoring step has meaningful alternatives.",
@@ -312,18 +312,8 @@ function buildShortlistSystemPrompt(): string {
   ].join("\n");
 }
 
-function formatEvidenceSummaryForTriage(campaign: Campaign): string {
-  const summary = campaign.evidence_summary;
-
-  if (!summary || !Number.isFinite(summary.total_documents)) {
-    return "unknown";
-  }
-
-  const documentTypes = Object.entries(summary.document_types)
-    .map(([type, count]) => `${type}:${count}`)
-    .join(", ");
-
-  return `total_documents=${summary.total_documents}${documentTypes ? `; document_types=${documentTypes}` : ""}`;
+function formatEvidenceAvailabilityForTriage(campaign: Campaign): string {
+  return `evidence_document_count=${campaign.evidence_document_count}; has_evidence=${campaign.has_evidence}`;
 }
 
 function buildShortlistPrompt(campaigns: Campaign[], persona: Persona): string {
@@ -339,7 +329,7 @@ function buildShortlistPrompt(campaigns: Campaign[], persona: Persona): string {
         `funded_amount: ${campaign.funded_amount}`,
         `goal_amount_creator_supplied: ${campaign.goal_amount}`,
         `verified_by: ${campaign.verified_by ?? "none"}`,
-        `evidence_summary: ${formatEvidenceSummaryForTriage(campaign)}`,
+        `evidence_availability: ${formatEvidenceAvailabilityForTriage(campaign)}`,
       ].join("\n"),
     )
     .join("\n\n");
@@ -366,8 +356,6 @@ function buildDeterministicFallbackShortlist(
   campaigns: Campaign[],
   persona: Persona,
 ): Campaign[] {
-  const evidenceBoost = 1 + persona.decision_framework.weights.evidence_quality * 4;
-
   return campaigns
     .filter((campaign) => campaign.status === "active")
     .map((campaign) => {
@@ -375,10 +363,6 @@ function buildDeterministicFallbackShortlist(
 
       if (persona.identity.preferred_categories.includes(campaign.category)) {
         heuristicScore += 4;
-      }
-
-      if (hasPositiveEvidenceSignal(campaign)) {
-        heuristicScore += evidenceBoost;
       }
 
       if (hasEvaluationReadyNarrative(campaign)) {
@@ -478,10 +462,8 @@ export async function shortlistCampaigns(
   }
 }
 
-export function hasPositiveEvidenceSignal(campaign: Campaign): boolean {
-  const totalDocuments = campaign.evidence_summary?.total_documents;
-
-  return typeof totalDocuments === "number" && Number.isFinite(totalDocuments) && totalDocuments > 0;
+export function hasEvidenceDocuments(campaign: Campaign): boolean {
+  return campaign.has_evidence && campaign.evidence_document_count > 0;
 }
 
 export function shouldFetchEvidence(
@@ -489,7 +471,7 @@ export function shouldFetchEvidence(
   persona: Persona,
   shortlistRank: number,
 ): boolean {
-  if (!hasPositiveEvidenceSignal(campaign)) {
+  if (!hasEvidenceDocuments(campaign)) {
     return false;
   }
 
