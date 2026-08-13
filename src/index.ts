@@ -20,7 +20,7 @@ import { getWalletAddress, sendUSDC } from "./wallet.js";
 import { fetchEvidenceViaX402 } from "./x402.js";
 import {
   shortlistCampaigns,
-  hasPositiveEvidenceSignal,
+  hasEvidenceDocuments,
   shouldFetchEvidence,
   scoreCampaigns,
   selectWinner,
@@ -167,6 +167,8 @@ function normalizeCampaign(campaign: {
   goal_amount: number;
   funded_amount: number;
   creator_wallet_address?: string;
+  evidence_document_count: number;
+  has_evidence: boolean;
   evidence_summary?: unknown;
   verified_by?: string | null;
   status: string;
@@ -181,6 +183,8 @@ function normalizeCampaign(campaign: {
     goal_amount: campaign.goal_amount,
     funded_amount: campaign.funded_amount,
     creator_wallet_address: campaign.creator_wallet_address ?? "",
+    evidence_document_count: campaign.evidence_document_count,
+    has_evidence: campaign.has_evidence,
     evidence_summary: normalizeEvidenceSummary(campaign.evidence_summary),
     verified_by: campaign.verified_by ?? undefined,
     status: campaign.status,
@@ -430,18 +434,18 @@ async function main(): Promise<void> {
 
   for (const [index, campaign] of shortlist.entries()) {
     if (!shouldFetchEvidence(campaign, persona, index)) {
-      if (!hasPositiveEvidenceSignal(campaign)) {
+      if (!hasEvidenceDocuments(campaign)) {
         switch (persona.evidence_access.pay_when) {
           case "shortlisted_finalist":
             if (index < 3) {
               console.log(
-                `SKIP No positive evidence signal for ${campaign.title}; skipping evidence fetch.`,
+                `SKIP No current evidence documents for ${campaign.title}; skipping evidence fetch.`,
               );
             }
             break;
           case "always_if_eligible":
             console.log(
-              `SKIP No positive evidence signal for ${campaign.title}; skipping evidence fetch.`,
+              `SKIP No current evidence documents for ${campaign.title}; skipping evidence fetch.`,
             );
             break;
         }
